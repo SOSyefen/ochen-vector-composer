@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+__pycache__
+raw_svgs
+*.py
+carbon_task.md
+carbon_solution.md
+preview_components.html
+.vercel
