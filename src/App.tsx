@@ -26,6 +26,7 @@ export const App: React.FC = () => {
   // Object manipulation handlers
   const handleAddObject = (id: IllustrationId, variant: ObjectVariant) => {
     const newInstanceId = `obj_${Date.now()}_${id}`;
+    const maxZ = Math.max(...objects.map((o) => o.zIndex), 0);
     const newObj: CanvasObject = {
       instanceId: newInstanceId,
       illustrationId: id,
@@ -34,7 +35,7 @@ export const App: React.FC = () => {
       y: activeFormatConfig.height / 2 + (Math.random() * 80 - 40),
       scale: 1.0,
       rotation: 0,
-      zIndex: objects.length + 1,
+      zIndex: maxZ + 1,
     };
     setObjects((prev) => [...prev, newObj]);
     setSelectedId(newInstanceId);

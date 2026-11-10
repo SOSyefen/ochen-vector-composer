@@ -59,6 +59,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     e.stopPropagation();
     onSelect(obj.instanceId);
     setDraggingId(obj.instanceId);
+    (e.target as Element).setPointerCapture?.(e.pointerId);
 
     // Calculate offset in canvas units
     if (containerRef.current) {
@@ -88,8 +89,11 @@ export const Canvas: React.FC<CanvasProps> = ({
     });
   };
 
-  const handlePointerUp = () => {
-    setDraggingId(null);
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (draggingId) {
+      (e.target as Element).releasePointerCapture?.(e.pointerId);
+      setDraggingId(null);
+    }
   };
 
   const selectedObj = objects.find((o) => o.instanceId === selectedId);

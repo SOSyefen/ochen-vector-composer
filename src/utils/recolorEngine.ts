@@ -80,14 +80,18 @@ export const BUILTIN_PALETTES: Palette[] = [
 
 export function isAllowedCanvasBg(hexCandidate: string, activePalette?: Palette): boolean {
   const hex = normalizeHex(hexCandidate);
+  
+  // 1. Strict check: must be in approved system backgrounds
   if (APPROVED_SYSTEM_BACKGROUNDS.has(hex)) return true;
-  if (FORBIDDEN_CANVAS_BG_COLORS.has(hex)) return false;
 
-  if (activePalette) {
-    const paletteBg = normalizeHex(activePalette.roles.bg);
-    if (hex === paletteBg) return true;
+  // 2. Or must be the explicit bg role of active palette
+  if (activePalette && hex === normalizeHex(activePalette.roles.bg)) {
+    // But even then, must NOT be one of the forbidden object accent colors
+    return !FORBIDDEN_CANVAS_BG_COLORS.has(hex);
   }
-  return true;
+
+  // Default-deny: all other colors are forbidden as canvas backgrounds
+  return false;
 }
 
 export function validatePalette(roles: PaletteRoles): { valid: boolean; error?: string } {
