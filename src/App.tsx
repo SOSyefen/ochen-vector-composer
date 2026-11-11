@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CanvasFormatId, CANVAS_FORMATS, CanvasObject, DetailSize, IllustrationId, ObjectVariant, Palette } from './types';
-import { BUILTIN_PALETTES } from './utils/recolorEngine';
+import { BUILTIN_PALETTES, isAllowedCanvasBg } from './utils/recolorEngine';
 import { generateCompositionByMetaphor } from './utils/aiComposer';
 import { assembleFullSvg, downloadSvgFile } from './utils/svgExporter';
 import { Toolbar } from './components/Toolbar';
@@ -20,7 +20,11 @@ export const App: React.FC = () => {
 
   // Safe canvas background setter respecting client rules
   const setCanvasBg = (color: string) => {
-    setCanvasBgState(color);
+    if (isAllowedCanvasBg(color, activePalette)) {
+      setCanvasBgState(color);
+    } else {
+      console.warn(`[Client Color Rule Violation]: Color ${color} is forbidden as canvas background.`);
+    }
   };
 
   // Initialize with a beautiful initial scene
@@ -74,19 +78,25 @@ export const App: React.FC = () => {
 
   const handleBringForward = (id: string) => {
     setObjects((prev) => {
-      const target = prev.find((o) => o.instanceId === id);
-      if (!target) return prev;
-      const maxZ = Math.max(...prev.map((o) => o.zIndex), 0);
-      return prev.map((o) => (o.instanceId === id ? { ...o, zIndex: maxZ + 1 } : o));
+      const sorted = [...prev].sort((a, b) => a.zIndex - b.zIndex);
+      const idx = sorted.findIndex((o) => o.instanceId === id);
+      if (idx === -1 || idx === sorted.length - 1) return prev;
+      const temp = sorted[idx];
+      sorted[idx] = sorted[idx + 1];
+      sorted[idx + 1] = temp;
+      return sorted.map((o, i) => ({ ...o, zIndex: i }));
     });
   };
 
   const handleSendBackward = (id: string) => {
     setObjects((prev) => {
-      const target = prev.find((o) => o.instanceId === id);
-      if (!target) return prev;
-      const minZ = Math.min(...prev.map((o) => o.zIndex), 1);
-      return prev.map((o) => (o.instanceId === id ? { ...o, zIndex: Math.max(0, minZ - 1) } : o));
+      const sorted = [...prev].sort((a, b) => a.zIndex - b.zIndex);
+      const idx = sorted.findIndex((o) => o.instanceId === id);
+      if (idx <= 0) return prev;
+      const temp = sorted[idx];
+      sorted[idx] = sorted[idx - 1];
+      sorted[idx - 1] = temp;
+      return sorted.map((o, i) => ({ ...o, zIndex: i }));
     });
   };
 
@@ -96,8 +106,25 @@ export const App: React.FC = () => {
     setCanvasBg(newPalette.roles.bg);
   };
 
-  // Format change
+  // Format change with proportional coordinate remapping and bounds clamping
   const handleFormatChange = (newFormat: CanvasFormatId) => {
+    if (newFormat === format) return;
+    const oldConfig = CANVAS_FORMATS[format];
+    const newConfig = CANVAS_FORMATS[newFormat];
+    const scaleX = newConfig.width / oldConfig.width;
+    const scaleY = newConfig.height / oldConfig.height;
+
+    setObjects((prev) =>
+      prev.map((obj) => {
+        const newX = Math.round(obj.x * scaleX);
+        const newY = Math.round(obj.y * scaleY);
+        return {
+          ...obj,
+          x: Math.max(60, Math.min(newConfig.width - 60, newX)),
+          y: Math.max(60, Math.min(newConfig.height - 60, newY)),
+        };
+      })
+    );
     setFormat(newFormat);
   };
 

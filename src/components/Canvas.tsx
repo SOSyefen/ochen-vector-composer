@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { CanvasFormatConfig, CanvasObject, DetailSize, Palette } from '../types';
 import { getRawSvg, parseSvgViewBox } from '../utils/svgRegistry';
 import { recolorSvg } from '../utils/recolorEngine';
-import { Move, RotateCw, Trash2, Copy, ArrowUp, ArrowDown } from 'lucide-react';
+import { RotateCw, Trash2, Copy, ArrowUp, ArrowDown, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface CanvasProps {
   objects: CanvasObject[];
@@ -166,6 +166,31 @@ export const Canvas: React.FC<CanvasProps> = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
+              const newScale = Math.max(0.4, Number((selectedObj.scale - 0.1).toFixed(2)));
+              onUpdateObject({ ...selectedObj, scale: newScale });
+            }}
+            className="p-1.5 hover:bg-slate-800 text-slate-300 rounded"
+            title="Уменьшить (scale -10%)"
+          >
+            <ZoomOut className="w-4 h-4" />
+          </button>
+          <span className="text-[10px] font-mono text-slate-400 px-0.5">
+            {Math.round(selectedObj.scale * 100)}%
+          </span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const newScale = Math.min(2.5, Number((selectedObj.scale + 0.1).toFixed(2)));
+              onUpdateObject({ ...selectedObj, scale: newScale });
+            }}
+            className="p-1.5 hover:bg-slate-800 text-slate-300 rounded"
+            title="Увеличить (scale +10%)"
+          >
+            <ZoomIn className="w-4 h-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
               onDuplicateObject(selectedObj.instanceId);
             }}
             className="p-1.5 hover:bg-slate-800 text-slate-300 rounded"
@@ -227,6 +252,10 @@ export const Canvas: React.FC<CanvasProps> = ({
                   transform={transform}
                   className="cursor-grab active:cursor-grabbing group transition-opacity"
                   onPointerDown={(e) => handlePointerDown(e, obj)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelect(obj.instanceId);
+                  }}
                 >
                   {/* Invisible hit area */}
                   <rect

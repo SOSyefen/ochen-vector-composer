@@ -286,33 +286,56 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className="text-xs font-semibold text-purple-300 mb-1">
                 Правило дизайн-системы:
               </div>
-              <p className="text-[11px] text-slate-300 leading-relaxed">
+              <p className="text-[11px] text-slate-300 leading-relaxed mb-2">
                 «Цвета фонов могут использоваться в объектах. Цвета для объектов не могут использоваться в фонах».
               </p>
+              <div className="text-[10px] text-slate-400">
+                Попробуйте кликнуть по любому акцентному цвету ниже — движок заблокирует попытку и выдаст ошибку.
+              </div>
             </div>
 
             <div>
               <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Текущие роли палитры ({activePalette.name})
+                Роли палитры ({activePalette.name})
               </div>
               <div className="space-y-1.5 text-xs font-mono">
-                {Object.entries(activePalette.roles).map(([role, hex]) => (
-                  <div
-                    key={role}
-                    className="flex items-center justify-between p-1.5 rounded bg-slate-900 border border-slate-800/60"
-                  >
-                    <span className="text-slate-400 text-[11px] capitalize">
-                      {role.replace('_', ' ')}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-slate-300 text-[11px]">{hex}</span>
-                      <div
-                        className="w-3.5 h-3.5 rounded border border-black/20"
-                        style={{ backgroundColor: hex }}
-                      />
-                    </div>
-                  </div>
-                ))}
+                {Object.entries(activePalette.roles).map(([role, hex]) => {
+                  const isBgRole = role === 'bg';
+                  return (
+                    <button
+                      key={role}
+                      onClick={() => handleBgSelect(hex)}
+                      className={`w-full flex items-center justify-between p-2 rounded border transition text-left ${
+                        isBgRole
+                          ? 'bg-slate-900 border-slate-700 hover:border-emerald-500'
+                          : 'bg-slate-900/60 border-slate-800 hover:border-rose-500 hover:bg-rose-950/20'
+                      }`}
+                      title={isBgRole ? 'Разрешённый фон' : 'Цвет объекта (запрещён для фона)'}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3.5 h-3.5 rounded border border-black/30 shrink-0"
+                          style={{ backgroundColor: hex }}
+                        />
+                        <span className="text-slate-300 text-[11px] capitalize">
+                          {role.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-slate-400 text-[10px]">{hex}</span>
+                        <span
+                          className={`text-[9px] px-1 py-0.5 rounded font-sans ${
+                            isBgRole
+                              ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60'
+                              : 'bg-rose-950/60 text-rose-400 border border-rose-800/40'
+                          }`}
+                        >
+                          {isBgRole ? 'фон OK' : 'объект'}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
