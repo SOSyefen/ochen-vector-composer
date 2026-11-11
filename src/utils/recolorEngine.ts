@@ -1,14 +1,9 @@
-import { ColorRole, Palette, PaletteRoles } from '../types';
+import { ObjectVariant, Palette, PaletteRoles } from '../types';
+import { normalizeHex, recolorSvgPure, scopeSvgIds } from '../engine/pipeline/4-svgCompiler';
+import { BUILTIN_PALETTES } from '../engine/catalog';
 
-export function normalizeHex(color: string): string {
-  const trimmed = color.trim().toUpperCase();
-  if (trimmed === 'WHITE') return '#FFFFFF';
-  if (trimmed === 'BLACK') return '#000000';
-  if (/^#[0-9A-F]{3}$/.test(trimmed)) {
-    return `#${trimmed[1]}${trimmed[1]}${trimmed[2]}${trimmed[2]}${trimmed[3]}${trimmed[3]}`;
-  }
-  return trimmed;
-}
+/** Чистые SVG-утилиты и встроенные палитры живут в ядре (ZERO-DOM); реэкспорт для обратной совместимости. */
+export { normalizeHex, scopeSvgIds, BUILTIN_PALETTES };
 
 export const APPROVED_SYSTEM_BACKGROUNDS: ReadonlySet<string> = new Set<string>([
   '#D7CDF5', // Lavender
@@ -33,64 +28,15 @@ export const FORBIDDEN_CANVAS_BG_COLORS: ReadonlySet<string> = new Set<string>([
   '#B6C6FE', // Light blue
 ]);
 
-export const BUILTIN_PALETTES: Palette[] = [
-  {
-    id: 'lavender',
-    name: 'Lavender / Лаванда',
-    roles: {
-      bg: '#D7CDF5',
-      primary_accent: '#AA9BF0',
-      secondary_accent: '#7864D7',
-      highlight: '#F9ECB0',
-      tertiary_accent: '#F9A3AA',
-      soft_fill: '#FFE3E1',
-      stroke: '#181817',
-      white: '#FFFFFF',
-    },
-  },
-  {
-    id: 'sand',
-    name: 'Sand & Peach / Песок',
-    roles: {
-      bg: '#FDD7B9',
-      primary_accent: '#FAC896',
-      secondary_accent: '#D27532',
-      highlight: '#F9ECB0',
-      tertiary_accent: '#80DADA',
-      soft_fill: '#BEEBEB',
-      stroke: '#181817',
-      white: '#FFFFFF',
-    },
-  },
-  {
-    id: 'mint',
-    name: 'Mint & Teal / Мята',
-    roles: {
-      bg: '#BEEBEB',
-      primary_accent: '#80DADA',
-      secondary_accent: '#5ABEBE',
-      highlight: '#FFD4F2',
-      tertiary_accent: '#6D7BFC',
-      soft_fill: '#B6C6FE',
-      stroke: '#181817',
-      white: '#FFFFFF',
-    },
-  },
-];
-
 export function isAllowedCanvasBg(hexCandidate: string, activePalette?: Palette): boolean {
   const hex = normalizeHex(hexCandidate);
-  
-  // 1. Strict check: must be in approved system backgrounds
+
   if (APPROVED_SYSTEM_BACKGROUNDS.has(hex)) return true;
 
-  // 2. Or must be the explicit bg role of active palette
   if (activePalette && hex === normalizeHex(activePalette.roles.bg)) {
-    // But even then, must NOT be one of the forbidden object accent colors
     return !FORBIDDEN_CANVAS_BG_COLORS.has(hex);
   }
 
-  // Default-deny: all other colors are forbidden as canvas backgrounds
   return false;
 }
 
@@ -105,56 +51,15 @@ export function validatePalette(roles: PaletteRoles): { valid: boolean; error?: 
   return { valid: true };
 }
 
-// Map base SVG colors (Lavender) to logical roles
-const SOURCE_COLOR_ROLES: Record<string, ColorRole> = {
-  '#D7CDF5': 'bg',
-  '#AA9BF0': 'primary_accent',
-  '#7864D7': 'secondary_accent',
-  '#F9ECB0': 'highlight',
-  '#F9A3AA': 'tertiary_accent',
-  '#FFE3E1': 'soft_fill',
-  '#181817': 'stroke',
-  '#FFFFFF': 'white',
-  'WHITE': 'white',
-};
-
-export function scopeSvgIds(svgContent: string, prefix: string): string {
-  const safePrefix = prefix.replace(/[^a-zA-Z0-9_-]/g, '_');
-  const ids: string[] = [];
-  const idRegex = /\bid=["']([^"']+)["']/g;
-  let match;
-  while ((match = idRegex.exec(svgContent)) !== null) {
-    ids.push(match[1]);
-  }
-
-  let result = svgContent;
-  for (const id of ids) {
-    const newId = `${safePrefix}_${id}`;
-    result = result.replaceAll(`id="${id}"`, `id="${newId}"`);
-    result = result.replaceAll(`url(#${id})`, `url(#${newId})`);
-    result = result.replaceAll(`href="#${id}"`, `href="#${newId}"`);
-  }
-  return result;
-}
-
-export function recolorSvg(rawSvg: string, palette: Palette, instanceId?: string): string {
-  let content = instanceId ? scopeSvgIds(rawSvg, instanceId) : rawSvg;
-
-  // Replace colors according to palette roles
-  for (const [sourceColor, role] of Object.entries(SOURCE_COLOR_ROLES)) {
-    const targetColor = palette.roles[role];
-    if (!targetColor) continue;
-
-    // Replace fill="SOURCE" or stroke="SOURCE"
-    const fillRegex = new RegExp(`fill=["']${sourceColor}["']`, 'gi');
-    content = content.replace(fillRegex, `fill="${targetColor}"`);
-
-    const strokeRegex = new RegExp(`stroke=["']${sourceColor}["']`, 'gi');
-    content = content.replace(strokeRegex, `stroke="${targetColor}"`);
-
-    const styleRegex = new RegExp(`(:\\s*)${sourceColor}([;"])`, 'gi');
-    content = content.replace(styleRegex, `$1${targetColor}$2`);
-  }
-
-  return content;
+/**
+ * Перекраска SVG под палитру + scoping id.
+ * Делегирует в чистое ядро (engine/pipeline/4-svgCompiler).
+ */
+export function recolorSvg(
+  rawSvg: string,
+  palette: Palette,
+  instanceId?: string,
+  variant?: ObjectVariant
+): string {
+  return recolorSvgPure(rawSvg, palette, instanceId, variant);
 }

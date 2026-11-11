@@ -12,6 +12,8 @@ export type IllustrationId =
 
 export type DetailSize = 'L' | 'S';
 
+export const S_SIZE_SCALE_RATIO = 0.65;
+
 export type ObjectVariant = 'Main' | 'Bg';
 
 export type CanvasFormatId = 'square' | 'horizontal' | 'vertical';
@@ -28,22 +30,22 @@ export const CANVAS_FORMATS: Record<CanvasFormatId, CanvasFormatConfig> = {
   square: {
     id: 'square',
     label: 'Квадрат (1:1)',
-    width: 1000,
-    height: 1000,
+    width: 380,
+    height: 380,
     ratio: '1:1',
   },
   horizontal: {
     id: 'horizontal',
     label: 'Горизонтальный (16:9)',
-    width: 1200,
-    height: 675,
+    width: 450,
+    height: 250,
     ratio: '16:9',
   },
   vertical: {
     id: 'vertical',
     label: 'Вертикальный (9:16)',
-    width: 720,
-    height: 1280,
+    width: 250,
+    height: 450,
     ratio: '9:16',
   },
 };

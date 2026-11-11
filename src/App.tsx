@@ -1,14 +1,34 @@
-import React, { useState } from 'react';
-import { CanvasFormatId, CANVAS_FORMATS, CanvasObject, DetailSize, IllustrationId, ObjectVariant, Palette } from './types';
+import React, { useEffect, useState } from 'react';
+import {
+  CanvasFormatId,
+  CANVAS_FORMATS,
+  CanvasObject,
+  DetailSize,
+  IllustrationId,
+  ObjectVariant,
+  Palette,
+  S_SIZE_SCALE_RATIO,
+} from './types';
 import { BUILTIN_PALETTES, isAllowedCanvasBg } from './utils/recolorEngine';
-import { generateCompositionByMetaphor, LayoutStyle } from './utils/aiComposer';
+import {
+  generateCompositionByMetaphor,
+  composeByComponentList,
+  LayoutStyle,
+} from './utils/aiComposer';
 import { assembleFullSvg, downloadSvgFile } from './utils/svgExporter';
 import { Toolbar } from './components/Toolbar';
 import { Sidebar } from './components/Sidebar';
 import { Canvas } from './components/Canvas';
 import { AiModal } from './components/AiModal';
+import { DebugInspectorModal } from './components/DebugInspectorModal';
+
 
 let globalInstanceCounter = 0;
+
+const roundScale = (v: number): number => Number(v.toFixed(3));
+
+const scaleObjects = (items: CanvasObject[], ratio: number): CanvasObject[] =>
+  items.map((obj) => ({ ...obj, scale: roundScale(obj.scale * ratio) }));
 
 export const App: React.FC = () => {
   const [size, setSize] = useState<DetailSize>('L');
@@ -17,15 +37,31 @@ export const App: React.FC = () => {
   const [canvasBg, setCanvasBgState] = useState<string>(BUILTIN_PALETTES[0].roles.bg);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [isDebugOpen, setIsDebugOpen] = useState(false);
+  const [showDebugOverlay, setShowDebugOverlay] = useState(false);
 
-  // Safe canvas background setter respecting client rules
-  const setCanvasBg = (color: string) => {
-    if (isAllowedCanvasBg(color, activePalette)) {
+  // Hotkey: Ctrl/Cmd + Shift + D — переключает Debug Inspector
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        setIsDebugOpen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  // Canvas background setter enforcing client color rules against a given palette
+  const applyCanvasBg = (color: string, palette: Palette) => {
+    if (isAllowedCanvasBg(color, palette)) {
       setCanvasBgState(color);
     } else {
       console.warn(`[Client Color Rule Violation]: Color ${color} is forbidden as canvas background.`);
     }
   };
+
+  const setCanvasBg = (color: string) => applyCanvasBg(color, activePalette);
 
   // Initialize with the Art Director reference scene
   const [objects, setObjects] = useState<CanvasObject[]>(() =>
@@ -33,6 +69,14 @@ export const App: React.FC = () => {
   );
 
   const activeFormatConfig = CANVAS_FORMATS[format];
+
+  // Size L/S toggle: rescale all existing objects proportionally
+  const handleSizeChange = (newSize: DetailSize) => {
+    if (newSize === size) return;
+    const ratio = newSize === 'S' ? S_SIZE_SCALE_RATIO : 1 / S_SIZE_SCALE_RATIO;
+    setObjects((prev) => scaleObjects(prev, ratio));
+    setSize(newSize);
+  };
 
   // Object manipulation handlers
   const handleAddObject = (id: IllustrationId, variant: ObjectVariant) => {
@@ -43,14 +87,15 @@ export const App: React.FC = () => {
       horizontal: 0.34,
       vertical: 0.32,
     };
-    const defaultScale = formatScaleMap[format] || 0.38;
+    const defaultScale =
+      (formatScaleMap[format] || 0.38) * (size === 'S' ? S_SIZE_SCALE_RATIO : 1.0);
     const newObj: CanvasObject = {
       instanceId: newInstanceId,
       illustrationId: id,
       variant,
       x: activeFormatConfig.width / 2 + (Math.random() * 80 - 40),
       y: activeFormatConfig.height / 2 + (Math.random() * 80 - 40),
-      scale: defaultScale,
+      scale: roundScale(defaultScale),
       rotation: 0,
       zIndex: maxZ + 1,
     };
@@ -106,10 +151,11 @@ export const App: React.FC = () => {
     });
   };
 
-  // Palette change updates canvas background to match new theme's bg
+  // Palette change updates canvas background to match new theme's bg.
+  // Validated against the NEW palette (state update of activePalette is not yet visible here).
   const handlePaletteChange = (newPalette: Palette) => {
     setActivePalette(newPalette);
-    setCanvasBg(newPalette.roles.bg);
+    applyCanvasBg(newPalette.roles.bg, newPalette);
   };
 
   // Format change with proportional coordinate remapping and bounds clamping
@@ -134,10 +180,17 @@ export const App: React.FC = () => {
     setFormat(newFormat);
   };
 
-  // Universal composition generator (Scenario 1 & 2)
+  // Composition generator: metaphor prompt
   const handleGenerateMetaphor = (prompt: string, layoutStyle?: LayoutStyle) => {
-    const newComposition = generateCompositionByMetaphor(prompt, format, layoutStyle);
-    setObjects(newComposition);
+    const generated = generateCompositionByMetaphor(prompt, format, layoutStyle);
+    setObjects(size === 'S' ? scaleObjects(generated, S_SIZE_SCALE_RATIO) : generated);
+    setSelectedId(null);
+  };
+
+  // Composition generator: explicit component list
+  const handleGenerateComponents = (items: IllustrationId[], layoutStyle?: LayoutStyle) => {
+    const generated = composeByComponentList(items, format, layoutStyle);
+    setObjects(size === 'S' ? scaleObjects(generated, S_SIZE_SCALE_RATIO) : generated);
     setSelectedId(null);
   };
 
@@ -158,13 +211,14 @@ export const App: React.FC = () => {
       {/* Top Header / Toolbar */}
       <Toolbar
         size={size}
-        onSizeChange={setSize}
+        onSizeChange={handleSizeChange}
         format={format}
         onFormatChange={handleFormatChange}
         activePalette={activePalette}
         onPaletteChange={handlePaletteChange}
         onExport={handleExportSvg}
         onOpenAiModal={() => setIsAiModalOpen(true)}
+        onOpenDebugModal={() => setIsDebugOpen(true)}
       />
 
       {/* Main Workspace Area */}
@@ -198,16 +252,29 @@ export const App: React.FC = () => {
           onUpdateObject={handleUpdateObject}
           onDeleteObject={handleDeleteObject}
           onDuplicateObject={handleDuplicateObject}
+          showDebugOverlay={showDebugOverlay}
           onBringForward={handleBringForward}
           onSendBackward={handleSendBackward}
         />
       </div>
 
-      {/* Scenario 1: AI Prompt Modal */}
+      {/* AI Modal: metaphor + component-list generation */}
       <AiModal
         isOpen={isAiModalOpen}
         onClose={() => setIsAiModalOpen(false)}
-        onGenerate={handleGenerateMetaphor}
+        onGenerateMetaphor={handleGenerateMetaphor}
+        onGenerateComponents={handleGenerateComponents}
+      />
+
+      {/* Debug Inspector: traces, AABB overlay, smoke suite, bundle export */}
+      <DebugInspectorModal
+        isOpen={isDebugOpen}
+        onClose={() => setIsDebugOpen(false)}
+        showDebugOverlay={showDebugOverlay}
+        onToggleDebugOverlay={() => setShowDebugOverlay((v) => !v)}
+        size={size}
+        format={format}
+        objects={objects}
       />
     </div>
   );

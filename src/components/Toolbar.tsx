@@ -1,7 +1,7 @@
 import React from 'react';
 import { CanvasFormatId, CANVAS_FORMATS, DetailSize, Palette } from '../types';
 import { BUILTIN_PALETTES } from '../utils/recolorEngine';
-import { Download, Sparkles, Layers, Palette as PaletteIcon, Square, Maximize2, Smartphone } from 'lucide-react';
+import { Download, Sparkles, Layers, Palette as PaletteIcon, Square, Maximize2, Smartphone, Bug } from 'lucide-react';
 
 interface ToolbarProps {
   size: DetailSize;
@@ -12,6 +12,7 @@ interface ToolbarProps {
   onPaletteChange: (p: Palette) => void;
   onExport: () => void;
   onOpenAiModal: () => void;
+  onOpenDebugModal?: () => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -23,6 +24,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onPaletteChange,
   onExport,
   onOpenAiModal,
+  onOpenDebugModal,
 }) => {
   return (
     <header className="h-16 border-b border-slate-800 bg-[#0f1422] px-6 flex items-center justify-between z-30 select-none">
@@ -49,6 +51,19 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <Sparkles className="w-3.5 h-3.5" />
           <span>Собрать по метафоре (AI)</span>
         </button>
+
+        {onOpenDebugModal && (
+          <button
+            onClick={onOpenDebugModal}
+            title="Инспектор отладки (Ctrl+Shift+D)"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-900/70 hover:bg-slate-800 text-slate-300 text-xs transition active:scale-95"
+          >
+            <Bug className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-[9px] uppercase tracking-wider px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-mono">
+              Debug
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Middle Options: Size & Formats */}

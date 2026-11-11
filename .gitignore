@@ -10,6 +10,11 @@ raw_svgs
 *.png
 *.html
 *.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.node.json
+.roo/
 *_prompt.md
 *_verdict.md
 task_*.md

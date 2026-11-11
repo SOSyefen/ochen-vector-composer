@@ -1,7 +1,10 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useSyncExternalStore } from 'react';
 import { CanvasFormatConfig, CanvasObject, DetailSize, Palette } from '../types';
 import { getRawSvg, parseSvgViewBox } from '../utils/svgRegistry';
 import { recolorSvg } from '../utils/recolorEngine';
+import { extractSvgInner, readInheritedRootAttrs } from '../engine/pipeline/4-svgCompiler';
+import { traceStore } from '../engine/telemetry/traceStore';
+import type { PipelineTrace } from '../engine/contracts';
 import { RotateCw, Trash2, Copy, ArrowUp, ArrowDown, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface CanvasProps {
@@ -17,6 +20,111 @@ interface CanvasProps {
   onDuplicateObject: (id: string) => void;
   onBringForward: (id: string) => void;
   onSendBackward: (id: string) => void;
+  showDebugOverlay?: boolean;
+}
+
+/** Отладочный оверлей: AABB, перекрестия, сетка и safe-зона headline в координатах холста */
+function renderDebugOverlay(
+  trace: PipelineTrace,
+  format: CanvasFormatConfig,
+  fitScale: number
+): React.ReactNode {
+  const { grid, items } = trace.spatial;
+  if (!(grid.W > 0) || !(grid.H > 0) || !(fitScale > 0)) return null;
+
+  const sx = format.width / grid.W;
+  const sy = format.height / grid.H;
+  const px = 1 / fitScale; // 1 экранный пиксель в единицах холста
+  const fontSize = 9 * px;
+  const cross = 5 * px;
+  const gridDivisions = 4;
+
+  return (
+    <g pointerEvents="none" className="debug-overlay">
+      {/* Сетка */}
+      <rect
+        x={0}
+        y={0}
+        width={format.width}
+        height={format.height}
+        fill="none"
+        stroke="#94a3b8"
+        strokeOpacity={0.5}
+        strokeWidth={px}
+      />
+      {Array.from({ length: gridDivisions - 1 }, (_, i) => {
+        const k = (i + 1) / gridDivisions;
+        return (
+          <g key={`grid_${i}`} stroke="#94a3b8" strokeOpacity={0.18} strokeWidth={px}>
+            <line x1={k * format.width} y1={0} x2={k * format.width} y2={format.height} />
+            <line x1={0} y1={k * format.height} x2={format.width} y2={k * format.height} />
+          </g>
+        );
+      })}
+
+      {/* Safe-зона headline */}
+      {trace.intent.resolvedStyle === 'headline' && (
+        <g>
+          <line
+            x1={0.28 * format.width}
+            y1={0}
+            x2={0.28 * format.width}
+            y2={format.height}
+            stroke="#fbbf24"
+            strokeWidth={1.5 * px}
+            strokeDasharray={`${6 * px} ${4 * px}`}
+          />
+          <text
+            x={0.28 * format.width + 3 * px}
+            y={fontSize + 2 * px}
+            fontSize={fontSize}
+            fill="#fbbf24"
+            fontFamily="monospace"
+          >
+            headline safe 0.28W
+          </text>
+        </g>
+      )}
+
+      {/* AABB и перекрестия */}
+      {items.map((item, i) => {
+        const left = item.aabb.left * sx;
+        const top = item.aabb.top * sy;
+        const width = (item.aabb.right - item.aabb.left) * sx;
+        const height = (item.aabb.bottom - item.aabb.top) * sy;
+        const cx = item.finalCoords.gx * sx;
+        const cy = item.finalCoords.gy * sy;
+        const color = item.role === 'small_accent' ? '#22d3ee' : '#34d399';
+        const labelY = top < fontSize + 2 * px ? top + fontSize + 1 * px : top - 2 * px;
+        return (
+          <g key={`${item.illustrationId}_${i}`}>
+            <rect
+              x={left}
+              y={top}
+              width={width}
+              height={height}
+              fill={color}
+              fillOpacity={0.06}
+              stroke={color}
+              strokeWidth={1.25 * px}
+              strokeDasharray={`${5 * px} ${3 * px}`}
+            />
+            <line x1={cx - cross} y1={cy} x2={cx + cross} y2={cy} stroke={color} strokeWidth={px} />
+            <line x1={cx} y1={cy - cross} x2={cx} y2={cy + cross} stroke={color} strokeWidth={px} />
+            <text
+              x={left + 2 * px}
+              y={labelY}
+              fontSize={fontSize}
+              fill={color}
+              fontFamily="monospace"
+            >
+              {`${item.role}:${item.illustrationId} (z:${item.zIndex})`}
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
 }
 
 export const Canvas: React.FC<CanvasProps> = ({
@@ -32,8 +140,14 @@ export const Canvas: React.FC<CanvasProps> = ({
   onDuplicateObject,
   onBringForward,
   onSendBackward,
+  showDebugOverlay = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const latestTrace = useSyncExternalStore(
+    traceStore.subscribe,
+    traceStore.getLatestTrace,
+    traceStore.getLatestTrace
+  );
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
@@ -47,7 +161,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       const padding = 80;
       const scaleX = (clientWidth - padding) / format.width;
       const scaleY = (clientHeight - padding) / format.height;
-      setFitScale(Math.min(scaleX, scaleY, 1.0));
+      setFitScale(Math.min(scaleX, scaleY, 2.5));
     };
 
     handleResize();
@@ -234,7 +348,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             .sort((a, b) => a.zIndex - b.zIndex)
             .map((obj) => {
               const raw = getRawSvg(obj.illustrationId, size, obj.variant);
-              const recolored = recolorSvg(raw, palette, obj.instanceId);
+              const recolored = recolorSvg(raw, palette, obj.instanceId, obj.variant);
               const metrics = parseSvgViewBox(raw);
               const isSelected = obj.instanceId === selectedId;
 
@@ -242,9 +356,8 @@ export const Canvas: React.FC<CanvasProps> = ({
               const originY = metrics.vbHeight / 2;
               const transform = `translate(${obj.x - (originX + metrics.minX) * obj.scale}, ${obj.y - (originY + metrics.minY) * obj.scale}) scale(${obj.scale}) rotate(${obj.rotation} ${originX + metrics.minX} ${originY + metrics.minY})`;
 
-              // Parse inner SVG markup
-              const match = recolored.match(/<svg[^>]*>([\s\S]*?)<\/svg>/i);
-              const innerSvg = match ? match[1] : '';
+              // Содержимое ассета + наследуемые атрибуты корня (как в экспорте)
+              const innerSvg = `<g${readInheritedRootAttrs(recolored)}>${extractSvgInner(recolored)}</g>`;
 
               return (
                 <g
@@ -284,6 +397,9 @@ export const Canvas: React.FC<CanvasProps> = ({
                 </g>
               );
             })}
+
+          {/* Debug overlay (AABB / grid / headline safe-zone) */}
+          {showDebugOverlay && latestTrace ? renderDebugOverlay(latestTrace, format, fitScale) : null}
         </svg>
       </div>
     </div>
