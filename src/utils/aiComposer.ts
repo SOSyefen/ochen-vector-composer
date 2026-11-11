@@ -38,19 +38,20 @@ export interface CuratedBlueprint {
 }
 
 // ---------------------------------------------------------------------------
-// 1. INTRINSIC SCALE NORMALIZATION
+// 1. INTRINSIC SCALE NORMALIZATION & ISOMETRIC FOOTPRINT CALIBRATION
 // ---------------------------------------------------------------------------
-// Intrinsic asset dimensions in SVG library:
-// - book: ~1479x1020 px (Giant) -> normalized scale ~0.42 - 0.48
-// - folder: ~1275x693 px (Giant) -> normalized scale ~0.48 - 0.54
-// - notebook: ~800x500 px (Large) -> normalized scale ~0.65 - 0.75
-// - lamp: ~460x650 px (Tall) -> normalized scale ~0.72 - 0.82
-// - vase: ~420x600 px (Tall) -> normalized scale ~0.75 - 0.85
-// - phone: ~418x313 px (Medium) -> normalized scale ~0.90 - 1.05
-// - pen: ~549x321 px (Medium) -> normalized scale ~0.80 - 0.95
-// - headphones: ~500x450 px (Medium) -> normalized scale ~0.80 - 0.92
-// - puzzle: ~450x350 px (Medium) -> normalized scale ~0.85 - 1.00
-// - coin: ~260x200 px (Small) -> normalized scale ~0.95 - 1.15
+// Native SVG viewBox sizes & calibrated target canvas sizes (1000x1000 space):
+// - book: ~1479x1020 px (Giant ground base) -> scale ~0.38 (renders ~562x388 px)
+// - folder: ~1275x693 px (Giant ground base) -> scale ~0.42 (renders ~536x291 px)
+// - lamp: ~631x1153 px (Tall background) -> scale ~0.36 - 0.38 (renders ~240x438 px)
+// - vase: ~978x1163 px (Tall background) -> scale ~0.34 - 0.38 (renders ~352x419 px)
+// - headphones: ~914x728 px (Foreground hero) -> scale ~0.44 (renders ~402x320 px)
+// - puzzle: ~833x495 px (Phone with puzzle screen) -> scale ~0.50 - 0.52 (renders ~433x257 px)
+//   NOTE: puzzle and phone are mutually exclusive in L-size!
+// - phone: ~418x313 px (Standard smartphone) -> scale ~0.76 - 0.82 (renders ~334x250 px)
+// - notebook: ~413x415 px (Compact spiral pad) -> scale ~0.64 - 0.68 (renders ~281x282 px)
+// - pen: ~549x321 px (Desk stylus / pen) -> scale ~0.50 - 0.52 (renders ~274x160 px)
+// - coin: ~391x397 px (Accent medal / coin) -> scale ~0.46 - 0.50 (renders ~180x182 px)
 
 export const DOMAIN_ARCHETYPES: DomainArchetype[] = [
   // 1. FINTECH & CAPITAL
@@ -69,20 +70,20 @@ export const DOMAIN_ARCHETYPES: DomainArchetype[] = [
         variantName: 'Vault Desk (Сейфовый стол)',
         description: 'Папка документов как основа, смартфон и инвестиционная монета на первом плане',
         slots: [
-          { id: 'folder', variant: 'Bg', dx: -40, dy: -20, scale: 0.52, rotation: 0, layerTier: 0 },
-          { id: 'phone', variant: 'Main', dx: -60, dy: -10, scale: 0.95, rotation: 0, layerTier: 1 },
-          { id: 'coin', variant: 'Main', dx: 140, dy: 60, scale: 1.10, rotation: 0, layerTier: 2 },
-          { id: 'pen', variant: 'Bg', dx: 70, dy: -70, scale: 0.85, rotation: 0, layerTier: 1 },
+          { id: 'folder', variant: 'Bg', dx: -30, dy: -20, scale: 0.42, rotation: 0, layerTier: 0 },
+          { id: 'phone', variant: 'Main', dx: -40, dy: 10, scale: 0.78, rotation: 0, layerTier: 1 },
+          { id: 'coin', variant: 'Main', dx: 170, dy: 70, scale: 0.48, rotation: 0, layerTier: 2 },
+          { id: 'pen', variant: 'Bg', dx: 60, dy: -90, scale: 0.50, rotation: 0, layerTier: 1 },
         ],
       },
       {
         variantName: 'Digital Trading (Мобильный трейдинг)',
         description: 'Фокус на смартфоне с аналитическим блокнотом и золотой монетой',
         slots: [
-          { id: 'notebook', variant: 'Bg', dx: -120, dy: -50, scale: 0.68, rotation: 0, layerTier: 0 },
-          { id: 'phone', variant: 'Main', dx: 30, dy: -10, scale: 1.05, rotation: 0, layerTier: 1 },
-          { id: 'coin', variant: 'Main', dx: 180, dy: 70, scale: 1.12, rotation: 0, layerTier: 2 },
-          { id: 'pen', variant: 'Main', dx: -130, dy: 80, scale: 0.90, rotation: 0, layerTier: 2 },
+          { id: 'notebook', variant: 'Bg', dx: -130, dy: -40, scale: 0.68, rotation: 0, layerTier: 0 },
+          { id: 'phone', variant: 'Main', dx: 40, dy: 0, scale: 0.82, rotation: 0, layerTier: 1 },
+          { id: 'coin', variant: 'Main', dx: 180, dy: 80, scale: 0.50, rotation: 0, layerTier: 2 },
+          { id: 'pen', variant: 'Main', dx: -120, dy: 90, scale: 0.52, rotation: 0, layerTier: 2 },
         ],
       },
     ],
@@ -102,23 +103,22 @@ export const DOMAIN_ARCHETYPES: DomainArchetype[] = [
     blueprints: [
       {
         variantName: 'Scholar Desk (Рабочий стол исследователя)',
-        description: 'Раскрытая книга в центре композиции, настольная лампа слева и блокнот для заметок',
+        description: 'Раскрытая книга в центре композиции, настольная лампа слева и фирменная ручка',
         slots: [
-          { id: 'book', variant: 'Main', dx: 20, dy: 10, scale: 0.46, rotation: 0, layerTier: 0 },
-          { id: 'lamp', variant: 'Bg', dx: -200, dy: -130, scale: 0.78, rotation: 0, layerTier: 0 },
-          { id: 'notebook', variant: 'Bg', dx: 180, dy: -70, scale: 0.65, rotation: 0, layerTier: 1 },
-          { id: 'pen', variant: 'Main', dx: 130, dy: 90, scale: 0.88, rotation: 0, layerTier: 2 },
-          { id: 'headphones', variant: 'Bg', dx: -160, dy: 100, scale: 0.82, rotation: 0, layerTier: 1 },
+          { id: 'book', variant: 'Main', dx: 0, dy: -20, scale: 0.38, rotation: 0, layerTier: 0 },
+          { id: 'pen', variant: 'Main', dx: -20, dy: 110, scale: 0.52, rotation: 0, layerTier: 2 },
+          { id: 'lamp', variant: 'Bg', dx: -190, dy: -120, scale: 0.36, rotation: 0, layerTier: 0 },
+          { id: 'coin', variant: 'Bg', dx: 180, dy: 90, scale: 0.46, rotation: 0, layerTier: 2 },
         ],
       },
       {
-        variantName: 'Deep Learning (Погружение в материал)',
+        variantName: 'Audio Lecture (Аудиолекция)',
         description: 'Книга с лампой и наушниками для полной изоляции от отвлекающих факторов',
         slots: [
-          { id: 'lamp', variant: 'Main', dx: 160, dy: -100, scale: 0.82, rotation: 0, layerTier: 0 },
-          { id: 'book', variant: 'Bg', dx: -60, dy: -20, scale: 0.44, rotation: 0, layerTier: 0 },
-          { id: 'headphones', variant: 'Main', dx: 60, dy: 80, scale: 0.90, rotation: 0, layerTier: 2 },
-          { id: 'pen', variant: 'Bg', dx: -140, dy: 80, scale: 0.85, rotation: 0, layerTier: 1 },
+          { id: 'book', variant: 'Bg', dx: -80, dy: -20, scale: 0.36, rotation: 0, layerTier: 0 },
+          { id: 'headphones', variant: 'Main', dx: 70, dy: 40, scale: 0.44, rotation: 0, layerTier: 2 },
+          { id: 'pen', variant: 'Bg', dx: 130, dy: -90, scale: 0.48, rotation: 0, layerTier: 1 },
+          { id: 'vase', variant: 'Bg', dx: -190, dy: -130, scale: 0.34, rotation: 0, layerTier: 0 },
         ],
       },
     ],
@@ -134,26 +134,26 @@ export const DOMAIN_ARCHETYPES: DomainArchetype[] = [
       'уют', 'creative', 'art', 'design', 'idea', 'концепт', 'иллюстрац', 'декор',
     ],
     primaryPool: ['vase', 'lamp'],
-    supportingPool: ['puzzle', 'notebook', 'pen', 'book'],
+    supportingPool: ['notebook', 'pen', 'book', 'headphones'],
     blueprints: [
       {
-        variantName: 'Atelier Harmony (Атмосфера мастерской)',
-        description: 'Керамическая ваза с растением, уютная лампа и дизайнерские пазлы',
+        variantName: 'Atelier Harmony (Гармония мастерской)',
+        description: 'Керамическая ваза с растением в глубине, стильные наушники и скетчбук',
         slots: [
-          { id: 'vase', variant: 'Main', dx: -70, dy: -20, scale: 0.82, rotation: 0, layerTier: 1 },
-          { id: 'lamp', variant: 'Bg', dx: 140, dy: -110, scale: 0.78, rotation: 0, layerTier: 0 },
-          { id: 'puzzle', variant: 'Main', dx: 80, dy: 60, scale: 0.92, rotation: 0, layerTier: 2 },
-          { id: 'notebook', variant: 'Bg', dx: -180, dy: 80, scale: 0.65, rotation: 0, layerTier: 1 },
+          { id: 'vase', variant: 'Main', dx: -140, dy: -80, scale: 0.38, rotation: 0, layerTier: 0 },
+          { id: 'headphones', variant: 'Main', dx: 40, dy: 30, scale: 0.44, rotation: 0, layerTier: 2 },
+          { id: 'notebook', variant: 'Bg', dx: -110, dy: 90, scale: 0.65, rotation: 0, layerTier: 1 },
+          { id: 'pen', variant: 'Main', dx: 160, dy: 110, scale: 0.50, rotation: 0, layerTier: 2 },
         ],
       },
       {
-        variantName: 'Conceptual Flow (Поток идей)',
-        description: 'Ваза в центре с раскрытой книгой идей и скетч-ручкой',
+        variantName: 'Inspiration Book (Книга вдохновения)',
+        description: 'Раскрытая книга идей с акцентной вазой и скетч-ручкой',
         slots: [
-          { id: 'book', variant: 'Bg', dx: 80, dy: -30, scale: 0.44, rotation: 0, layerTier: 0 },
-          { id: 'vase', variant: 'Main', dx: -110, dy: 10, scale: 0.84, rotation: 0, layerTier: 1 },
-          { id: 'pen', variant: 'Main', dx: 60, dy: 90, scale: 0.88, rotation: 0, layerTier: 2 },
-          { id: 'puzzle', variant: 'Bg', dx: -160, dy: -90, scale: 0.86, rotation: 0, layerTier: 0 },
+          { id: 'book', variant: 'Main', dx: -20, dy: 10, scale: 0.38, rotation: 0, layerTier: 0 },
+          { id: 'vase', variant: 'Bg', dx: 170, dy: -110, scale: 0.34, rotation: 0, layerTier: 0 },
+          { id: 'pen', variant: 'Main', dx: -50, dy: 120, scale: 0.52, rotation: 0, layerTier: 2 },
+          { id: 'coin', variant: 'Main', dx: 160, dy: 80, scale: 0.46, rotation: 0, layerTier: 2 },
         ],
       },
     ],
@@ -168,27 +168,27 @@ export const DOMAIN_ARCHETYPES: DomainArchetype[] = [
       'команд', 'брейншторм', 'стартап', 'партнер', 'синерги', 'пазл', 'митинг',
       'созвон', 'интеграц', 'team', 'brainstorm', 'puzzle', 'collab', 'хакатон',
     ],
-    primaryPool: ['puzzle', 'phone'],
-    supportingPool: ['lamp', 'notebook', 'coin', 'vase'],
+    primaryPool: ['puzzle', 'lamp'],
+    supportingPool: ['notebook', 'coin', 'folder', 'pen'],
     blueprints: [
       {
         variantName: 'Puzzle Assembly (Сборка пазла)',
-        description: 'Деталь пазла как метафора найденного решения, смартфон на связи и свет инсайта',
+        description: 'Смартфон с пазлом как метафора найденного решения, лампа инсайта и рабочий блокнот',
         slots: [
-          { id: 'puzzle', variant: 'Main', dx: -40, dy: 0, scale: 0.98, rotation: 0, layerTier: 1 },
-          { id: 'lamp', variant: 'Bg', dx: -180, dy: -120, scale: 0.76, rotation: 0, layerTier: 0 },
-          { id: 'phone', variant: 'Main', dx: 140, dy: 40, scale: 0.95, rotation: 0, layerTier: 2 },
-          { id: 'notebook', variant: 'Bg', dx: 120, dy: -90, scale: 0.65, rotation: 0, layerTier: 0 },
+          { id: 'puzzle', variant: 'Main', dx: 0, dy: 30, scale: 0.52, rotation: 0, layerTier: 1 },
+          { id: 'lamp', variant: 'Bg', dx: -180, dy: -120, scale: 0.38, rotation: 0, layerTier: 0 },
+          { id: 'notebook', variant: 'Bg', dx: 160, dy: -60, scale: 0.64, rotation: 0, layerTier: 0 },
+          { id: 'coin', variant: 'Bg', dx: -140, dy: 90, scale: 0.46, rotation: 0, layerTier: 2 },
         ],
       },
       {
-        variantName: 'Sync Session (Синхронизация)',
-        description: 'Совместный рабочий блокнот, мобильный чат и пазлы командной динамики',
+        variantName: 'Sync Meeting (Синхронизация)',
+        description: 'Проектная папка как основа, смартфон с пазлом команды и фирменная ручка',
         slots: [
-          { id: 'notebook', variant: 'Bg', dx: -60, dy: -20, scale: 0.72, rotation: 0, layerTier: 0 },
-          { id: 'phone', variant: 'Main', dx: 110, dy: -10, scale: 0.98, rotation: 0, layerTier: 1 },
-          { id: 'puzzle', variant: 'Main', dx: -120, dy: 80, scale: 0.92, rotation: 0, layerTier: 2 },
-          { id: 'coin', variant: 'Bg', dx: 130, dy: 90, scale: 1.05, rotation: 0, layerTier: 2 },
+          { id: 'folder', variant: 'Bg', dx: -30, dy: -20, scale: 0.42, rotation: 0, layerTier: 0 },
+          { id: 'puzzle', variant: 'Main', dx: -20, dy: 20, scale: 0.50, rotation: 0, layerTier: 1 },
+          { id: 'pen', variant: 'Main', dx: 120, dy: 80, scale: 0.52, rotation: 0, layerTier: 2 },
+          { id: 'lamp', variant: 'Bg', dx: 180, dy: -110, scale: 0.36, rotation: 0, layerTier: 0 },
         ],
       },
     ],
@@ -204,26 +204,26 @@ export const DOMAIN_ARCHETYPES: DomainArchetype[] = [
       'дедлайн', 'ноч', 'концентрац', 'tech', 'dev', 'focus', 'code', 'it', 'айти',
     ],
     primaryPool: ['headphones', 'phone'],
-    supportingPool: ['lamp', 'notebook', 'puzzle'],
+    supportingPool: ['lamp', 'notebook', 'pen', 'vase'],
     blueprints: [
       {
         variantName: 'Night Flow (Ночной поток кодинга)',
         description: 'Наушники для шумоподавления, настольная лампа над рабочим местом и смартфон',
         slots: [
-          { id: 'headphones', variant: 'Main', dx: -40, dy: 20, scale: 0.95, rotation: 0, layerTier: 2 },
-          { id: 'lamp', variant: 'Bg', dx: 150, dy: -110, scale: 0.80, rotation: 0, layerTier: 0 },
-          { id: 'phone', variant: 'Main', dx: -150, dy: -50, scale: 0.92, rotation: 0, layerTier: 1 },
-          { id: 'notebook', variant: 'Bg', dx: 120, dy: 70, scale: 0.65, rotation: 0, layerTier: 1 },
+          { id: 'headphones', variant: 'Main', dx: 50, dy: 20, scale: 0.44, rotation: 0, layerTier: 2 },
+          { id: 'lamp', variant: 'Main', dx: -180, dy: -110, scale: 0.38, rotation: 0, layerTier: 0 },
+          { id: 'phone', variant: 'Bg', dx: -120, dy: 70, scale: 0.76, rotation: 0, layerTier: 1 },
+          { id: 'notebook', variant: 'Bg', dx: 150, dy: -60, scale: 0.64, rotation: 0, layerTier: 0 },
         ],
       },
       {
         variantName: 'Zen Coding (Дзен разработки)',
         description: 'Фокусная связка наушников и смартфона с лампой в глубине',
         slots: [
-          { id: 'lamp', variant: 'Bg', dx: -160, dy: -90, scale: 0.78, rotation: 0, layerTier: 0 },
-          { id: 'headphones', variant: 'Main', dx: 50, dy: 0, scale: 0.98, rotation: 0, layerTier: 2 },
-          { id: 'phone', variant: 'Bg', dx: 160, dy: 80, scale: 0.90, rotation: 0, layerTier: 1 },
-          { id: 'puzzle', variant: 'Bg', dx: -120, dy: 90, scale: 0.88, rotation: 0, layerTier: 1 },
+          { id: 'headphones', variant: 'Main', dx: -30, dy: 30, scale: 0.44, rotation: 0, layerTier: 2 },
+          { id: 'vase', variant: 'Bg', dx: 160, dy: -100, scale: 0.36, rotation: 0, layerTier: 0 },
+          { id: 'notebook', variant: 'Bg', dx: -130, dy: -60, scale: 0.65, rotation: 0, layerTier: 0 },
+          { id: 'pen', variant: 'Main', dx: 110, dy: 80, scale: 0.50, rotation: 0, layerTier: 2 },
         ],
       },
     ],
@@ -239,26 +239,26 @@ export const DOMAIN_ARCHETYPES: DomainArchetype[] = [
       'сделк', 'аудит', 'порядок', 'корпоратив', 'work', 'business', 'office', 'дело',
     ],
     primaryPool: ['folder', 'notebook'],
-    supportingPool: ['pen', 'lamp', 'phone', 'coin'],
+    supportingPool: ['pen', 'lamp', 'phone', 'coin', 'book'],
     blueprints: [
       {
         variantName: 'Contract Signing (Подписание контракта)',
         description: 'Папка с бумагами как основа, фирменная ручка сверху и смартфон',
         slots: [
-          { id: 'folder', variant: 'Main', dx: 0, dy: -20, scale: 0.52, rotation: 0, layerTier: 0 },
-          { id: 'pen', variant: 'Main', dx: 50, dy: -10, scale: 0.88, rotation: 0, layerTier: 1 },
-          { id: 'phone', variant: 'Bg', dx: -130, dy: 80, scale: 0.90, rotation: 0, layerTier: 2 },
-          { id: 'coin', variant: 'Bg', dx: 140, dy: 70, scale: 1.05, rotation: 0, layerTier: 2 },
+          { id: 'folder', variant: 'Main', dx: -20, dy: -10, scale: 0.42, rotation: 0, layerTier: 0 },
+          { id: 'pen', variant: 'Main', dx: 30, dy: 40, scale: 0.50, rotation: 0, layerTier: 1 },
+          { id: 'phone', variant: 'Bg', dx: -150, dy: 80, scale: 0.76, rotation: 0, layerTier: 1 },
+          { id: 'lamp', variant: 'Bg', dx: 170, dy: -110, scale: 0.36, rotation: 0, layerTier: 0 },
         ],
       },
       {
-        variantName: 'Executive Suite (Кабинет руководителя)',
+        variantName: 'Archive Audit (Архивный аудит)',
         description: 'Папка документов с настольной лампой и структурированным блокнотом',
         slots: [
-          { id: 'folder', variant: 'Bg', dx: 60, dy: 10, scale: 0.50, rotation: 0, layerTier: 0 },
-          { id: 'notebook', variant: 'Main', dx: -110, dy: -30, scale: 0.70, rotation: 0, layerTier: 1 },
-          { id: 'lamp', variant: 'Bg', dx: -180, dy: -120, scale: 0.75, rotation: 0, layerTier: 0 },
-          { id: 'pen', variant: 'Main', dx: 40, dy: 80, scale: 0.88, rotation: 0, layerTier: 2 },
+          { id: 'folder', variant: 'Bg', dx: -60, dy: -20, scale: 0.42, rotation: 0, layerTier: 0 },
+          { id: 'book', variant: 'Main', dx: 60, dy: 10, scale: 0.36, rotation: 0, layerTier: 0 },
+          { id: 'pen', variant: 'Main', dx: -80, dy: 90, scale: 0.50, rotation: 0, layerTier: 2 },
+          { id: 'coin', variant: 'Main', dx: 170, dy: 80, scale: 0.46, rotation: 0, layerTier: 2 },
         ],
       },
     ],
