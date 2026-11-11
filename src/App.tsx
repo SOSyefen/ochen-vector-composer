@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CanvasFormatId, CANVAS_FORMATS, CanvasObject, DetailSize, IllustrationId, ObjectVariant, Palette } from './types';
 import { BUILTIN_PALETTES, isAllowedCanvasBg } from './utils/recolorEngine';
-import { generateCompositionByMetaphor } from './utils/aiComposer';
+import { generateCompositionByMetaphor, LayoutStyle } from './utils/aiComposer';
 import { assembleFullSvg, downloadSvgFile } from './utils/svgExporter';
 import { Toolbar } from './components/Toolbar';
 import { Sidebar } from './components/Sidebar';
@@ -27,9 +27,9 @@ export const App: React.FC = () => {
     }
   };
 
-  // Initialize with a beautiful initial scene
+  // Initialize with the Art Director reference scene
   const [objects, setObjects] = useState<CanvasObject[]>(() =>
-    generateCompositionByMetaphor('Финтех и аналитика', 'square')
+    generateCompositionByMetaphor('Эталон арт-директора', 'square', 'centered')
   );
 
   const activeFormatConfig = CANVAS_FORMATS[format];
@@ -134,9 +134,9 @@ export const App: React.FC = () => {
     setFormat(newFormat);
   };
 
-  // Metaphor generator
-  const handleGenerateMetaphor = (prompt: string) => {
-    const newComposition = generateCompositionByMetaphor(prompt, format);
+  // Universal composition generator (Scenario 1 & 2)
+  const handleGenerateMetaphor = (prompt: string, layoutStyle?: LayoutStyle) => {
+    const newComposition = generateCompositionByMetaphor(prompt, format, layoutStyle);
     setObjects(newComposition);
     setSelectedId(null);
   };
@@ -173,6 +173,7 @@ export const App: React.FC = () => {
         <Sidebar
           size={size}
           activePalette={activePalette}
+          onPaletteChange={handlePaletteChange}
           canvasBg={canvasBg}
           onCanvasBgChange={setCanvasBg}
           objects={objects}

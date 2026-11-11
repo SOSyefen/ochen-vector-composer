@@ -7,6 +7,7 @@ import { Plus, Layers, Grid, Palette as PaletteIcon, Check, AlertCircle, Trash2,
 interface SidebarProps {
   size: DetailSize;
   activePalette: Palette;
+  onPaletteChange: (palette: Palette) => void;
   canvasBg: string;
   onCanvasBgChange: (color: string) => void;
   objects: CanvasObject[];
@@ -22,6 +23,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({
   size,
   activePalette,
+  onPaletteChange,
   canvasBg,
   onCanvasBgChange,
   objects,
@@ -36,6 +38,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [activeTab, setActiveTab] = useState<'library' | 'layers' | 'colors'>('library');
   const [addVariant, setAddVariant] = useState<ObjectVariant>('Main');
   const [bgError, setBgError] = useState<string | null>(null);
+  const [customJson, setCustomJson] = useState('');
+  const [importError, setImportError] = useState<string | null>(null);
+
+  const handleApplyCustomPalette = () => {
+    try {
+      setImportError(null);
+      const parsed = JSON.parse(customJson);
+      const roles = {
+        bg: parsed.bg || '#FFFFFF',
+        primary_accent: parsed.primary_accent || '#AA9BF0',
+        secondary_accent: parsed.secondary_accent || '#7864D7',
+        highlight: parsed.highlight || '#F9ECB0',
+        tertiary_accent: parsed.tertiary_accent || '#F9A3AA',
+        soft_fill: parsed.soft_fill || '#FFE3E1',
+        stroke: parsed.stroke || '#181817',
+        white: parsed.white || '#FFFFFF',
+      };
+      if (FORBIDDEN_CANVAS_BG_COLORS.has(roles.bg.toUpperCase())) {
+        setImportError(`Ошибка: цвет ${roles.bg} принадлежит палитре объектов и запрещён для фона.`);
+        return;
+      }
+      const newPalette: Palette = {
+        id: `custom_${Date.now()}`,
+        name: parsed.name || 'Пользовательская',
+        roles,
+        isCustom: true,
+      };
+      onPaletteChange(newPalette);
+      setCustomJson('');
+    } catch (e: any) {
+      setImportError(`Ошибка валидации JSON: ${e.message}`);
+    }
+  };
 
   const handleBgSelect = (color: string) => {
     if (isAllowedCanvasBg(color, activePalette)) {
@@ -337,6 +372,52 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   );
                 })}
               </div>
+            </div>
+
+            {/* Custom Palette Importer */}
+            <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-xl space-y-2 mt-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-200">Импорт палитры (JSON)</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomJson(JSON.stringify({
+                      name: "Скандинавия (Custom)",
+                      bg: "#FFFFFF",
+                      primary_accent: "#A8B4C0",
+                      secondary_accent: "#5C6E82",
+                      highlight: "#E8EEF5",
+                      tertiary_accent: "#8FA3B8",
+                      soft_fill: "#D5DFEA",
+                      stroke: "#181817",
+                      white: "#FFFFFF"
+                    }, null, 2));
+                  }}
+                  className="text-[10px] text-purple-400 hover:text-purple-300 underline"
+                >
+                  Вставить шаблон
+                </button>
+              </div>
+              <textarea
+                value={customJson}
+                onChange={(e) => setCustomJson(e.target.value)}
+                placeholder='{"bg": "#FFFFFF", "primary_accent": "#...", ...}'
+                className="w-full h-24 p-2 text-[10px] font-mono bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:border-purple-500 focus:outline-none"
+              />
+              {importError && (
+                <div className="text-[10px] text-rose-400 flex items-start gap-1 p-1.5 rounded bg-rose-950/40 border border-rose-900/60">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span>{importError}</span>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={handleApplyCustomPalette}
+                disabled={!customJson.trim()}
+                className="w-full py-2 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-medium text-xs transition shadow-md shadow-purple-600/20 active:scale-95"
+              >
+                Загрузить и перекрасить
+              </button>
             </div>
           </div>
         )}

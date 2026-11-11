@@ -1,200 +1,323 @@
 import { CanvasFormatId, CanvasObject, CANVAS_FORMATS, IllustrationId, ObjectVariant } from '../types';
+import { ILLUSTRATION_CATALOG } from './svgRegistry';
 
 /**
- * Jev-AI Inspired Non-Autoregressive Classifier & Curated Layout Solver
- *
- * Architecture Principles:
- * 1. Fast, typed, deterministic semantic categorization (Zero-hallucination Jev principles).
- * 2. Curated design-grade blueprints per domain with multi-variant options.
- * 3. Strict asset scale normalization (so 1400px book/folder never swallows 400px phone/pen).
- * 4. Layer priority tiers (ground base surfaces at lowest zIndex, resting items on top)
- *    to completely eliminate SVG clipping / polygon slicing bugs.
+ * AI COMPOSER ENGINE (Студия Очень)
+ * 
+ * Supports:
+ * - Scenario 1: Natural language metaphor or headline -> automated balanced composition
+ * - Scenario 2: Explicit component names (chips or text) -> intelligent isometric assembly
+ * - 3 Canonical Art Director Schemes:
+ *   1. «Собранно» (Centered Island / Surface Stack) — 1:1 match with art director's reference
+ *   2. «Со смещением» (Asymmetric Offset) — diagonal balance from tall background to accent
+ *   3. «Под заголовок» (Under Headline) — right-shifted diorama leaving left space for typography
  */
+
+export type LayoutStyle = 'centered' | 'offset' | 'headline';
+
+export interface LayoutStyleOption {
+  id: LayoutStyle;
+  label: string;
+  description: string;
+}
+
+export const LAYOUT_STYLE_OPTIONS: readonly LayoutStyleOption[] = [
+  {
+    id: 'centered',
+    label: 'Собранно (Островок)',
+    description: 'Компактный изометрический островок по центру с опорой на базу',
+  },
+  {
+    id: 'offset',
+    label: 'Со смещением',
+    description: 'Асимметричный диагональный баланс от высокого фона к акценту',
+  },
+  {
+    id: 'headline',
+    label: 'Под заголовок',
+    description: 'Смещение композиции вправо с чистым полем слева под типографику',
+  },
+];
+
+// Role classification for composition hierarchy
+export type ObjectRole = 'base' | 'background' | 'hero' | 'accent';
+
+export const ROLE_MAP: Record<IllustrationId, ObjectRole> = {
+  book: 'base',
+  folder: 'base',
+  notebook: 'base',
+  lamp: 'background',
+  vase: 'background',
+  headphones: 'hero',
+  puzzle: 'hero',
+  phone: 'hero',
+  coin: 'accent',
+  pen: 'accent',
+};
+
+// Visual weight mapping from registry
+export const VISUAL_WEIGHT_MAP: Record<string, number> = {};
+ILLUSTRATION_CATALOG.forEach((item) => {
+  VISUAL_WEIGHT_MAP[item.id] = item.visualWeight;
+});
+
+// Calibrated native scale factors preserving strict mutual proportions
+export const CALIBRATED_OBJECT_SCALES: Record<IllustrationId, number> = {
+  book: 0.38,       // 1447px -> ~550px
+  folder: 0.42,     // 1243px -> ~522px
+  notebook: 0.42,   // 640px  -> ~268px (pedestal / wallet)
+  lamp: 0.32,       // 1131px -> ~361px (tall background)
+  vase: 0.30,       // 748px  -> ~224px (flower bouquet)
+  headphones: 0.42, // 883px  -> ~370px (hero)
+  puzzle: 0.38,     // 1029px -> ~391px (hero)
+  phone: 0.38,      // 802px  -> ~304px (hero)
+  pen: 0.38,        // 517px  -> ~196px (accent)
+  coin: 0.40,       // 335px  -> ~134px (accent)
+};
+
+export interface RolePositionConfig {
+  dx: number;
+  dy: number;
+  variant: ObjectVariant;
+  layerTier: number; // 0 = base / bg, 1 = hero, 2 = accent
+}
+
+export type LayoutConfig = Record<ObjectRole, RolePositionConfig>;
+
+/**
+ * 3 Canonical Art Director Layout Configurations
+ * All offsets calibrated relative to canvas center (500, 500 in 1:1)
+ */
+export const LAYOUT_CONFIGS: Record<LayoutStyle, LayoutConfig> = {
+  // Scheme 1: Centered Island (1:1 with art director's reference photo)
+  // notebook (wallet Bg) at (-100, -20)
+  // vase (flowers Bg) at (+120, -110)
+  // headphones (Main) at (+20, +30)
+  // pen (Main) at (+110, +75)
+  centered: {
+    base: { dx: -100, dy: -20, variant: 'Bg', layerTier: 0 },
+    background: { dx: 120, dy: -110, variant: 'Bg', layerTier: 0 },
+    hero: { dx: 20, dy: 30, variant: 'Main', layerTier: 1 },
+    accent: { dx: 110, dy: 75, variant: 'Main', layerTier: 2 },
+  },
+
+  // Scheme 2: Asymmetric Offset
+  // Tall lamp Bg top-left (-190, -120)
+  // Base / book / phone in center (-20, 10)
+  // Hero in center right (40, -10)
+  // Accent coin / pen in foreground right (170, 80)
+  offset: {
+    background: { dx: -190, dy: -120, variant: 'Bg', layerTier: 0 },
+    base: { dx: -20, dy: 10, variant: 'Bg', layerTier: 0 },
+    hero: { dx: 40, dy: -10, variant: 'Main', layerTier: 1 },
+    accent: { dx: 170, dy: 80, variant: 'Main', layerTier: 2 },
+  },
+
+  // Scheme 3: Under Headline (Negative space on left for typography)
+  // All elements shifted to the right (dx +150..+240)
+  // Left area (X < 500) completely clear
+  headline: {
+    base: { dx: 160, dy: -20, variant: 'Bg', layerTier: 0 },
+    background: { dx: 240, dy: -110, variant: 'Bg', layerTier: 0 },
+    hero: { dx: 180, dy: 30, variant: 'Main', layerTier: 1 },
+    accent: { dx: 240, dy: 75, variant: 'Main', layerTier: 2 },
+  },
+};
+
+/**
+ * Natural language component name parser (Russian & English)
+ */
+export function extractComponentsFromText(text: string): IllustrationId[] {
+  const normalized = text
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ' ');
+
+  const COMPONENT_PATTERNS: Array<{ regex: RegExp; id: IllustrationId }> = [
+    { regex: /\b(книг|book)\b/i, id: 'book' },
+    { regex: /\b(смартфон|телефон|phone)\b/i, id: 'phone' },
+    { regex: /\b(пазл|детал|puzzle)\b/i, id: 'puzzle' },
+    { regex: /\b(монет|жетон|coin)\b/i, id: 'coin' },
+    { regex: /\b(наушник|headphones)\b/i, id: 'headphones' },
+    { regex: /\b(ламп|свет|светильник|lamp)\b/i, id: 'lamp' },
+    { regex: /\b(ваз|букет|цвет|vase|flowers)\b/i, id: 'vase' },
+    { regex: /\b(кошел|блокнот|портмоне|wallet|notebook)\b/i, id: 'notebook' },
+    { regex: /\b(папк|документ|folder)\b/i, id: 'folder' },
+    { regex: /\b(ручк|стилус|pen)\b/i, id: 'pen' },
+  ];
+
+  const found = new Set<IllustrationId>();
+  for (const { regex, id } of COMPONENT_PATTERNS) {
+    if (regex.test(normalized)) {
+      found.add(id);
+    }
+  }
+
+  return Array.from(found);
+}
+
+/**
+ * Scenario 2 Dynamic Solver:
+ * Assembles exact component list according to isometric hierarchy and selected layout scheme.
+ */
+export function composeByComponentList(
+  components: IllustrationId[],
+  formatId: CanvasFormatId,
+  layoutStyle: LayoutStyle = 'centered'
+): CanvasObject[] {
+  const format = CANVAS_FORMATS[formatId];
+  const centerX = format.width / 2;
+  const centerY = format.height / 2;
+  const config = LAYOUT_CONFIGS[layoutStyle];
+
+  // Format adaptation multipliers
+  const spreadX = formatId === 'horizontal' ? 1.25 : formatId === 'vertical' ? 0.75 : 1.0;
+  const spreadY = formatId === 'horizontal' ? 0.85 : formatId === 'vertical' ? 1.25 : 1.0;
+  const globalScaleMultiplier = formatId === 'horizontal' ? 0.90 : formatId === 'vertical' ? 0.86 : 1.0;
+
+  // Group components by functional role
+  const roleGroups: Record<ObjectRole, IllustrationId[]> = {
+    base: [],
+    background: [],
+    hero: [],
+    accent: [],
+  };
+
+  components.forEach((id) => {
+    const role = ROLE_MAP[id] || 'hero';
+    roleGroups[role].push(id);
+  });
+
+  // Sort each role group by visual weight (heaviest first)
+  (Object.keys(roleGroups) as ObjectRole[]).forEach((role) => {
+    roleGroups[role].sort((a, b) => (VISUAL_WEIGHT_MAP[b] || 1) - (VISUAL_WEIGHT_MAP[a] || 1));
+  });
+
+  const objects: CanvasObject[] = [];
+  let instanceCounter = 0;
+
+  // Sequence of placement: background first (deepest), base, hero, accent in front
+  const roleSequence: ObjectRole[] = ['background', 'base', 'hero', 'accent'];
+
+  roleSequence.forEach((role) => {
+    const itemsInRole = roleGroups[role];
+    if (!itemsInRole || itemsInRole.length === 0) return;
+
+    itemsInRole.forEach((componentId, roleIdx) => {
+      const roleCfg = config[role];
+      const baseScale = CALIBRATED_OBJECT_SCALES[componentId] || 0.38;
+      const finalScale = Number((baseScale * globalScaleMultiplier).toFixed(2));
+
+      // Micro-stagger if multiple items share the same role slot
+      const staggerX = roleIdx * 45;
+      const staggerY = roleIdx * 35;
+
+      const finalX = Math.round(centerX + (roleCfg.dx + staggerX) * spreadX);
+      const finalY = Math.round(centerY + (roleCfg.dy + staggerY) * spreadY);
+
+      // Strict layer hierarchy:
+      // tier 0 (bg / base): zIndex 0..9
+      // tier 1 (hero resting on base): zIndex 10..19
+      // tier 2 (accents): zIndex 20..29
+      const calculatedZIndex = roleCfg.layerTier * 10 + roleIdx + (role === 'base' ? 2 : 0);
+
+      objects.push({
+        instanceId: `inst_${Date.now()}_${++instanceCounter}_${componentId}`,
+        illustrationId: componentId,
+        variant: roleCfg.variant,
+        x: Math.max(60, Math.min(format.width - 60, finalX)),
+        y: Math.max(60, Math.min(format.height - 60, finalY)),
+        scale: finalScale,
+        rotation: 0,
+        zIndex: calculatedZIndex,
+      });
+    });
+  });
+
+  // Strict Painter's Algorithm sorting
+  return objects.sort((a, b) => a.zIndex - b.zIndex);
+}
+
+// ---------------------------------------------------------------------------
+// DOMAIN ARCHETYPES (For Scenario 1: Metaphors & Headlines)
+// ---------------------------------------------------------------------------
 
 export interface DomainArchetype {
   id: string;
   name: string;
   description: string;
   keywords: string[];
-  primaryPool: IllustrationId[];
-  supportingPool: IllustrationId[];
-  blueprints: CuratedBlueprint[];
+  components: IllustrationId[];
+  preferredStyle: LayoutStyle;
 }
-
-export interface CuratedBlueprintSlot {
-  id: IllustrationId;
-  variant: ObjectVariant;
-  dx: number; // offset in 1000x1000 space
-  dy: number;
-  scale: number; // normalized scale
-  rotation: number;
-  layerTier: number; // 0 = base surface (folder/book), 1 = resting item, 2 = foreground accent
-}
-
-export interface CuratedBlueprint {
-  variantName: string;
-  description: string;
-  slots: CuratedBlueprintSlot[];
-}
-
-// ---------------------------------------------------------------------------
-// 1. INTRINSIC SCALE NORMALIZATION & ISOMETRIC FOOTPRINT CALIBRATION
-// ---------------------------------------------------------------------------
-// Native SVG viewBox sizes & calibrated target canvas sizes (1000x1000 space):
-// - book: ~1479x1020 px (Giant ground base) -> scale ~0.38 (renders ~562x388 px)
-// - folder: ~1275x693 px (Giant ground base) -> scale ~0.42 (renders ~536x291 px)
-// - lamp: ~631x1153 px (Tall background) -> scale ~0.36 - 0.38 (renders ~240x438 px)
-// - vase: ~978x1163 px (Tall background) -> scale ~0.34 - 0.38 (renders ~352x419 px)
-// - headphones: ~914x728 px (Foreground hero) -> scale ~0.44 (renders ~402x320 px)
-// - puzzle: ~833x495 px (Phone with puzzle screen) -> scale ~0.50 - 0.52 (renders ~433x257 px)
-//   NOTE: puzzle and phone are mutually exclusive in L-size!
-// - phone: ~418x313 px (Standard smartphone) -> scale ~0.76 - 0.82 (renders ~334x250 px)
-// - notebook: ~413x415 px (Compact spiral pad) -> scale ~0.64 - 0.68 (renders ~281x282 px)
-// - pen: ~549x321 px (Desk stylus / pen) -> scale ~0.50 - 0.52 (renders ~274x160 px)
-// - coin: ~391x397 px (Accent medal / coin) -> scale ~0.46 - 0.50 (renders ~180x182 px)
 
 export const DOMAIN_ARCHETYPES: DomainArchetype[] = [
-  // 1. FINTECH & CAPITAL
+  // 1. Studio Reference Palette (Exact match with user reference photo)
+  {
+    id: 'studio_reference',
+    name: 'Эталон арт-директора (Собранно)',
+    description: 'Кошелек-подложка, наушники, букет цветов на фоне и ручка',
+    keywords: [
+      'референс', 'эталон', 'арт', 'директор', 'кошелек', 'наушники', 'ваза', 'ручка',
+      'собранно', 'островок', 'reference', 'studio',
+    ],
+    components: ['notebook', 'vase', 'headphones', 'pen'],
+    preferredStyle: 'centered',
+  },
+
+  // 2. Fintech & Wealth
   {
     id: 'fintech',
-    name: 'Финтех и управление капиталом',
-    description: 'Инвестиционные сервисы, цифровой банкинг, аналитика и активы',
+    name: 'Финтех и капитал',
+    description: 'Цифровой банкинг, аналитика, инвестиции и активы',
     keywords: [
       'финтех', 'банк', 'деньг', 'крипт', 'инвест', 'капитал', 'доход', 'валют',
       'коин', 'fintech', 'money', 'finance', 'crypto', 'wallet', 'бюджет', 'счет',
     ],
-    primaryPool: ['phone', 'coin'],
-    supportingPool: ['folder', 'notebook', 'pen'],
-    blueprints: [
-      {
-        variantName: 'Vault Desk (Сейфовый стол)',
-        description: 'Папка документов как основа, смартфон и инвестиционная монета на первом плане, ручка лежит на переднем крае стола',
-        slots: [
-          { id: 'folder', variant: 'Bg', dx: -50, dy: 10, scale: 0.44, rotation: 0, layerTier: 0 },
-          { id: 'phone', variant: 'Main', dx: 40, dy: -20, scale: 0.38, rotation: 0, layerTier: 1 },
-          { id: 'coin', variant: 'Main', dx: -160, dy: 60, scale: 0.40, rotation: 0, layerTier: 2 },
-          { id: 'pen', variant: 'Bg', dx: 140, dy: 145, scale: 0.38, rotation: 0, layerTier: 2 },
-        ],
-      },
-      {
-        variantName: 'Digital Trading (Мобильный трейдинг)',
-        description: 'Фокус на смартфоне с аналитическим блокнотом и золотой монетой',
-        slots: [
-          { id: 'notebook', variant: 'Bg', dx: -130, dy: -30, scale: 0.65, rotation: 0, layerTier: 0 },
-          { id: 'phone', variant: 'Main', dx: 50, dy: 0, scale: 0.38, rotation: 0, layerTier: 1 },
-          { id: 'coin', variant: 'Main', dx: 180, dy: 80, scale: 0.40, rotation: 0, layerTier: 2 },
-          { id: 'pen', variant: 'Bg', dx: -120, dy: 110, scale: 0.38, rotation: 0, layerTier: 2 },
-        ],
-      },
-    ],
+    components: ['folder', 'phone', 'coin', 'pen'],
+    preferredStyle: 'centered',
   },
 
-  // 2. EDUCATION & STUDY
+  // 3. Education & Study
   {
     id: 'education',
-    name: 'Образование и аналитика',
-    description: 'Академические знания, курсы, исследования и книги',
+    name: 'Образование и книги',
+    description: 'Академические знания, курсы, исследования и чтение',
     keywords: [
       'образ', 'учеб', 'книг', 'курс', 'студент', 'лекци', 'наук', 'исследов',
       'школ', 'study', 'education', 'book', 'learn', 'academy', 'университет', 'диплом',
     ],
-    primaryPool: ['book', 'pen'],
-    supportingPool: ['lamp', 'headphones', 'vase', 'coin'],
-    blueprints: [
-      {
-        variantName: 'Scholar Desk (Рабочий стол исследователя)',
-        description: 'Раскрытая книга как основа, лампа в глубине, ручка и жетон на переднем плане',
-        slots: [
-          { id: 'book', variant: 'Main', dx: 0, dy: -10, scale: 0.38, rotation: 0, layerTier: 0 },
-          { id: 'lamp', variant: 'Bg', dx: -190, dy: -120, scale: 0.32, rotation: 0, layerTier: 0 },
-          { id: 'pen', variant: 'Main', dx: -20, dy: 115, scale: 0.38, rotation: 0, layerTier: 2 },
-          { id: 'coin', variant: 'Bg', dx: 180, dy: 90, scale: 0.40, rotation: 0, layerTier: 2 },
-        ],
-      },
-      {
-        variantName: 'Audio Lecture (Аудиолекция)',
-        description: 'Книга с наушниками для аудиального обучения, ваза на фоне, ручка на переднем плане',
-        slots: [
-          { id: 'book', variant: 'Bg', dx: -70, dy: -10, scale: 0.38, rotation: 0, layerTier: 0 },
-          { id: 'vase', variant: 'Bg', dx: -190, dy: -130, scale: 0.30, rotation: 0, layerTier: 0 },
-          { id: 'headphones', variant: 'Main', dx: 90, dy: 35, scale: 0.40, rotation: 0, layerTier: 2 },
-          { id: 'pen', variant: 'Main', dx: -50, dy: 115, scale: 0.38, rotation: 0, layerTier: 2 },
-        ],
-      },
-    ],
+    components: ['book', 'lamp', 'pen', 'coin'],
+    preferredStyle: 'offset',
   },
 
-  // 3. CREATIVE WORKSHOP & ART
+  // 4. Creative Studio & Design
   {
     id: 'creative',
-    name: 'Творчество и мастерская',
-    description: 'Дизайн, вдохновение, иллюстрации и эстетичные пространства',
+    name: 'Творчество и дизайн',
+    description: 'Вдохновение, креатив, эстетика рабочего пространства',
     keywords: [
       'дизайн', 'арт', 'творчеств', 'мастерск', 'вдохновен', 'красот', 'гармони',
-      'уют', 'decor', 'art', 'creative', 'design', 'craft', 'studio', 'стиль',
+      'уют', 'decor', 'art', 'creative', 'design', 'craft', 'стиль',
     ],
-    primaryPool: ['vase', 'lamp'],
-    supportingPool: ['book', 'headphones', 'notebook', 'pen', 'coin'],
-    blueprints: [
-      {
-        variantName: 'Atelier Harmony (Гармония мастерской)',
-        description: 'Ваза с ветвями в глубине, блокнот и наушники в творческом пространстве, ручка впереди',
-        slots: [
-          { id: 'vase', variant: 'Main', dx: -160, dy: -110, scale: 0.30, rotation: 0, layerTier: 0 },
-          { id: 'notebook', variant: 'Bg', dx: -80, dy: 10, scale: 0.65, rotation: 0, layerTier: 0 },
-          { id: 'headphones', variant: 'Bg', dx: 70, dy: 30, scale: 0.40, rotation: 0, layerTier: 2 },
-          { id: 'pen', variant: 'Main', dx: 140, dy: 110, scale: 0.38, rotation: 0, layerTier: 2 },
-        ],
-      },
-      {
-        variantName: 'Inspiration Book (Книга вдохновения)',
-        description: 'Раскрытая книга с эстетичной вазой на фоне, монетой и ручкой впереди',
-        slots: [
-          { id: 'book', variant: 'Main', dx: -20, dy: 10, scale: 0.38, rotation: 0, layerTier: 0 },
-          { id: 'vase', variant: 'Bg', dx: 180, dy: -110, scale: 0.30, rotation: 0, layerTier: 0 },
-          { id: 'pen', variant: 'Bg', dx: -50, dy: 115, scale: 0.38, rotation: 0, layerTier: 2 },
-          { id: 'coin', variant: 'Main', dx: 170, dy: 80, scale: 0.40, rotation: 0, layerTier: 2 },
-        ],
-      },
-    ],
+    components: ['notebook', 'vase', 'headphones', 'pen'],
+    preferredStyle: 'centered',
   },
 
-  // 4. TEAMWORK & PRODUCT
+  // 5. Teamwork & Synergy
   {
     id: 'teamwork',
     name: 'Командная работа и продукт',
-    description: 'Совместные проекты, сборка функционала, agile и коммуникации',
+    description: 'Совместные проекты, сборка сложного функционала и синергия',
     keywords: [
       'команд', 'проект', 'пазл', 'сборк', 'митинг', 'agile', 'синк', 'спринт',
-      'team', 'product', 'collaboration', 'puzzle', 'meeting', 'задач', 'решени',
+      'team', 'product', 'collaboration', 'puzzle', 'meeting', 'задач',
     ],
-    primaryPool: ['puzzle', 'folder'],
-    supportingPool: ['phone', 'lamp', 'pen', 'coin', 'notebook'],
-    blueprints: [
-      {
-        variantName: 'Puzzle Matrix (Сборка пазла)',
-        description: 'Смартфон на столе, над экраном парят детали пазла, золотая монета на первом плане',
-        slots: [
-          { id: 'lamp', variant: 'Bg', dx: -190, dy: -120, scale: 0.32, rotation: 0, layerTier: 0 },
-          { id: 'puzzle', variant: 'Main', dx: 0, dy: 10, scale: 0.38, rotation: 0, layerTier: 1 },
-          { id: 'coin', variant: 'Bg', dx: 170, dy: 70, scale: 0.40, rotation: 0, layerTier: 2 },
-          { id: 'pen', variant: 'Main', dx: -120, dy: 120, scale: 0.38, rotation: 0, layerTier: 2 },
-        ],
-      },
-      {
-        variantName: 'Sync Meeting (Синхронизация)',
-        description: 'Папка документов с парящим элементом пазла, лампа на фоне и ручка впереди',
-        slots: [
-          { id: 'folder', variant: 'Bg', dx: -40, dy: -10, scale: 0.44, rotation: 0, layerTier: 0 },
-          { id: 'lamp', variant: 'Bg', dx: 190, dy: -110, scale: 0.32, rotation: 0, layerTier: 0 },
-          { id: 'puzzle', variant: 'Main', dx: -10, dy: 20, scale: 0.38, rotation: 0, layerTier: 1 },
-          { id: 'pen', variant: 'Main', dx: 130, dy: 110, scale: 0.38, rotation: 0, layerTier: 2 },
-        ],
-      },
-    ],
+    components: ['folder', 'puzzle', 'lamp', 'coin'],
+    preferredStyle: 'offset',
   },
 
-  // 5. DEEP FOCUS & TECH
+  // 6. Deep Focus & Development
   {
     id: 'deep_focus',
     name: 'Глубокий фокус и технологии',
@@ -203,87 +326,39 @@ export const DOMAIN_ARCHETYPES: DomainArchetype[] = [
       'фокус', 'код', 'программир', 'ноч', 'концентрац', 'технолог', 'разработк',
       'dev', 'code', 'focus', 'tech', 'software', 'deep', 'ноутбук', 'алгоритм',
     ],
-    primaryPool: ['headphones', 'phone'],
-    supportingPool: ['lamp', 'notebook', 'pen', 'vase'],
-    blueprints: [
-      {
-        variantName: 'Night Flow (Ночной поток кодинга)',
-        description: 'Лампа в глубине, блокнот на столе, смартфон и накладные наушники в фокусе',
-        slots: [
-          { id: 'notebook', variant: 'Bg', dx: 140, dy: -40, scale: 0.65, rotation: 0, layerTier: 0 },
-          { id: 'lamp', variant: 'Bg', dx: -190, dy: -110, scale: 0.32, rotation: 0, layerTier: 0 },
-          { id: 'phone', variant: 'Main', dx: -90, dy: 30, scale: 0.38, rotation: 0, layerTier: 1 },
-          { id: 'headphones', variant: 'Main', dx: 70, dy: 40, scale: 0.40, rotation: 0, layerTier: 2 },
-        ],
-      },
-      {
-        variantName: 'Zen Coding (Дзен разработки)',
-        description: 'Наушники для изоляции шума, блокнот со схемами, ваза на фоне и ручка впереди',
-        slots: [
-          { id: 'notebook', variant: 'Bg', dx: -120, dy: -40, scale: 0.65, rotation: 0, layerTier: 0 },
-          { id: 'vase', variant: 'Bg', dx: 170, dy: -100, scale: 0.30, rotation: 0, layerTier: 0 },
-          { id: 'headphones', variant: 'Main', dx: 0, dy: 35, scale: 0.40, rotation: 0, layerTier: 1 },
-          { id: 'pen', variant: 'Bg', dx: 130, dy: 115, scale: 0.38, rotation: 0, layerTier: 2 },
-        ],
-      },
-    ],
+    components: ['lamp', 'phone', 'headphones', 'notebook'],
+    preferredStyle: 'offset',
   },
 
-  // 6. EXECUTIVE & STRATEGY
+  // 7. Editorial & Headline Layout
   {
-    id: 'executive',
-    name: 'Стратегия и управление',
-    description: 'Бизнес-планирование, подписание договоров, отчеты и лидерство',
+    id: 'headline_layout',
+    name: 'Под заголовок (Маркетинг)',
+    description: 'Композиция с воздухом на левой трети полотна для крупного текста',
     keywords: [
-      'бизнес', 'стратег', 'договор', 'контракт', 'директор', 'управлен', 'план',
-      'аудит', 'отчет', 'leader', 'business', 'strategy', 'management', 'executive',
+      'заголовок', 'типографик', 'текст', 'баннер', 'статья', 'обложк', 'headline',
+      'banner', 'editorial', 'свободн', 'воздух', 'маркетинг',
     ],
-    primaryPool: ['folder', 'book'],
-    supportingPool: ['pen', 'coin', 'lamp', 'phone'],
-    blueprints: [
-      {
-        variantName: 'Contract Signing (Подписание контракта)',
-        description: 'Официальная папка документов с ручкой на переднем крае, смартфон и настольная лампа',
-        slots: [
-          { id: 'folder', variant: 'Main', dx: -40, dy: 10, scale: 0.44, rotation: 0, layerTier: 0 },
-          { id: 'lamp', variant: 'Bg', dx: 180, dy: -110, scale: 0.32, rotation: 0, layerTier: 0 },
-          { id: 'phone', variant: 'Bg', dx: 40, dy: -20, scale: 0.38, rotation: 0, layerTier: 1 },
-          { id: 'pen', variant: 'Main', dx: 140, dy: 145, scale: 0.38, rotation: 0, layerTier: 2 },
-        ],
-      },
-      {
-        variantName: 'Archive Audit (Архивный аудит)',
-        description: 'Папка и книга как аналитическая база, ручка и жетон на переднем плане',
-        slots: [
-          { id: 'folder', variant: 'Bg', dx: -90, dy: -25, scale: 0.44, rotation: 0, layerTier: 0 },
-          { id: 'book', variant: 'Main', dx: 70, dy: 10, scale: 0.38, rotation: 0, layerTier: 0 },
-          { id: 'pen', variant: 'Main', dx: -60, dy: 115, scale: 0.38, rotation: 0, layerTier: 2 },
-          { id: 'coin', variant: 'Bg', dx: 180, dy: 80, scale: 0.40, rotation: 0, layerTier: 2 },
-        ],
-      },
-    ],
+    components: ['book', 'phone', 'pen', 'coin'],
+    preferredStyle: 'headline',
   },
 ];
 
 export const PRESET_METAPHORS = [
+  { title: '⭐ Эталон арт-директора', query: 'Кошелек, наушники, букет цветов, ручка (собранно)' },
   { title: 'Финтех и аналитика', query: 'Финтех-стартап, криптовалюты и управление капиталом' },
   { title: 'Командный брейншторм', query: 'Командный брейншторм, решение сложных пазлов и синергия' },
   { title: 'Глубокий фокус в дедлайн', query: 'Ночной кодинг в наушниках, глубокая концентрация и поиск инсайта' },
   { title: 'Образование будущего', query: 'Онлайн-университет, фундаментальные книги и конспектирование' },
-  { title: 'Творческая дизайн-студия', query: 'Уютная студия дизайна, эстетика, настольная лампа и свежие идеи' },
-  { title: 'Деловые документы', query: 'Офисный порядок, согласование договоров и папки документов' },
+  { title: '📰 Сцена под заголовок', query: 'Маркетинговый баннер под заголовок статьи' },
 ];
 
-let globalVariantCounter = 0;
-
 /**
- * Jev-AI Non-Autoregressive Matcher:
- * Computes scores across all archetypes, applying feature weights and calibrated probabilities.
+ * Classifies a prompt into one of the domain archetypes
  */
 export function classifyPrompt(input: string): {
   archetype: DomainArchetype;
   confidence: number;
-  matchedScore: number;
 } {
   const lower = input.toLowerCase().replace(/ё/g, 'е');
   let bestArchetype = DOMAIN_ARCHETYPES[0];
@@ -293,7 +368,6 @@ export function classifyPrompt(input: string): {
     let score = 0;
     for (const kw of arch.keywords) {
       if (lower.includes(kw)) {
-        // Longer keyword matches receive quadratic weight boost
         score += Math.max(1, kw.length / 3);
       }
     }
@@ -303,85 +377,29 @@ export function classifyPrompt(input: string): {
     }
   }
 
-  // Calibrated confidence (bounded 0.65 - 0.99)
-  const confidence = maxScore > 0 ? Math.min(0.99, 0.72 + maxScore * 0.05) : 0.65;
-
-  return {
-    archetype: bestArchetype,
-    confidence,
-    matchedScore: maxScore,
-  };
-}
-
-export function analyzeMetaphor(input: string): {
-  primary: IllustrationId[];
-  supporting: IllustrationId[];
-  description: string;
-  archetype: string;
-  confidence: number;
-} {
-  const { archetype, confidence } = classifyPrompt(input);
-  return {
-    primary: archetype.primaryPool,
-    supporting: archetype.supportingPool,
-    description: `Классификатор Jev AI: подобран архетип "${archetype.name}" (уверенность ${Math.round(confidence * 100)}%)`,
-    archetype: archetype.id,
-    confidence,
-  };
+  const confidence = maxScore > 0 ? Math.min(0.99, 0.75 + maxScore * 0.05) : 0.70;
+  return { archetype: bestArchetype, confidence };
 }
 
 /**
- * Studio Curated Layout Generator:
- * Generates human-designed isometric compositions where:
- * 1. Base surfaces (folder, book) are placed at lower zIndex (tier 0).
- * 2. Resting items (phone, pen, notebook) sit at higher zIndex (tier 1..2).
- * 3. Scales are normalized so giant assets never swallow medium assets.
- * 4. Repeating the same metaphor smoothly cycles through curated blueprint variants.
+ * Universal Master Composer:
+ * Automatically branches between Scenario 1 (Metaphor) and Scenario 2 (Component List)
  */
 export function generateCompositionByMetaphor(
   prompt: string,
-  formatId: CanvasFormatId
+  formatId: CanvasFormatId,
+  overrideStyle?: LayoutStyle
 ): CanvasObject[] {
-  const format = CANVAS_FORMATS[formatId];
+  // 1. Check if prompt explicitly specifies 2 or more components (Scenario 2)
+  const explicitComponents = extractComponentsFromText(prompt);
+  if (explicitComponents.length >= 2) {
+    const layoutStyle = overrideStyle || (prompt.toLowerCase().includes('заголовок') ? 'headline' : 'centered');
+    return composeByComponentList(explicitComponents, formatId, layoutStyle);
+  }
+
+  // 2. Scenario 1: Metaphor classification
   const { archetype } = classifyPrompt(prompt);
+  const layoutStyle = overrideStyle || archetype.preferredStyle;
 
-  // Cycle through available curated blueprints for this archetype
-  const blueprintIndex = (++globalVariantCounter) % archetype.blueprints.length;
-  const blueprint = archetype.blueprints[blueprintIndex];
-
-  const cx = format.width / 2;
-  const cy = format.height / 2;
-
-  // Format adaptation multipliers
-  const spreadX = formatId === 'horizontal' ? 1.25 : formatId === 'vertical' ? 0.75 : 1.0;
-  const spreadY = formatId === 'horizontal' ? 0.85 : formatId === 'vertical' ? 1.25 : 1.0;
-  const globalScaleMultiplier = formatId === 'horizontal' ? 0.92 : formatId === 'vertical' ? 0.88 : 1.0;
-
-  const objects: CanvasObject[] = [];
-
-  blueprint.slots.forEach((slot, idx) => {
-    const finalX = Math.round(cx + slot.dx * spreadX);
-    const finalY = Math.round(cy + slot.dy * spreadY);
-    const finalScale = Number((slot.scale * globalScaleMultiplier).toFixed(2));
-
-    // Strict zIndex calculation:
-    // tier 0 (bases like folder/book): zIndex 0..4
-    // tier 1 (resting items like pen/phone on folder): zIndex 10..14
-    // tier 2 (foreground accents): zIndex 20..24
-    const baseZ = slot.layerTier * 10 + idx;
-
-    objects.push({
-      instanceId: `inst_${Date.now()}_${idx}_${slot.id}`,
-      illustrationId: slot.id,
-      variant: slot.variant,
-      x: Math.max(80, Math.min(format.width - 80, finalX)),
-      y: Math.max(80, Math.min(format.height - 80, finalY)),
-      scale: finalScale,
-      rotation: slot.rotation,
-      zIndex: baseZ,
-    });
-  });
-
-  // Sort strictly by zIndex (Painter's algorithm guaranteed)
-  return objects.sort((a, b) => a.zIndex - b.zIndex);
+  return composeByComponentList(archetype.components, formatId, layoutStyle);
 }
