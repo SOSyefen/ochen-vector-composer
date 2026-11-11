@@ -9,8 +9,8 @@ export const ILLUSTRATION_CATALOG: readonly IllustrationCatalogItem[] = [
   { id: 'coin', label: 'Монета', category: 'finance', visualWeight: 0.75 },
   { id: 'headphones', label: 'Наушники', category: 'tech', visualWeight: 1.05 },
   { id: 'lamp', label: 'Лампа', category: 'work', visualWeight: 1.0 },
-  { id: 'vase', label: 'Ваза', category: 'creative', visualWeight: 0.85 },
-  { id: 'notebook', label: 'Блокнот', category: 'work', visualWeight: 0.9 },
+  { id: 'vase', label: 'Букет цветов', category: 'creative', visualWeight: 0.85 },
+  { id: 'notebook', label: 'Кошелек', category: 'finance', visualWeight: 0.9 },
   { id: 'folder', label: 'Папка', category: 'work', visualWeight: 1.0 },
   { id: 'pen', label: 'Ручка', category: 'work', visualWeight: 0.7 },
 ];

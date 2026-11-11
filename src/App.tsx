@@ -38,13 +38,19 @@ export const App: React.FC = () => {
   const handleAddObject = (id: IllustrationId, variant: ObjectVariant) => {
     const newInstanceId = `obj_${Date.now()}_${++globalInstanceCounter}_${id}`;
     const maxZ = Math.max(...objects.map((o) => o.zIndex), 0);
+    const formatScaleMap: Record<CanvasFormatId, number> = {
+      square: 0.38,
+      horizontal: 0.34,
+      vertical: 0.32,
+    };
+    const defaultScale = formatScaleMap[format] || 0.38;
     const newObj: CanvasObject = {
       instanceId: newInstanceId,
       illustrationId: id,
       variant,
       x: activeFormatConfig.width / 2 + (Math.random() * 80 - 40),
       y: activeFormatConfig.height / 2 + (Math.random() * 80 - 40),
-      scale: 1.0,
+      scale: defaultScale,
       rotation: 0,
       zIndex: maxZ + 1,
     };

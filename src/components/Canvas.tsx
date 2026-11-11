@@ -166,11 +166,11 @@ export const Canvas: React.FC<CanvasProps> = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              const newScale = Math.max(0.4, Number((selectedObj.scale - 0.1).toFixed(2)));
+              const newScale = Math.max(0.1, Number((selectedObj.scale - 0.05).toFixed(2)));
               onUpdateObject({ ...selectedObj, scale: newScale });
             }}
             className="p-1.5 hover:bg-slate-800 text-slate-300 rounded"
-            title="Уменьшить (scale -10%)"
+            title="Уменьшить (scale -5%)"
           >
             <ZoomOut className="w-4 h-4" />
           </button>
@@ -180,11 +180,11 @@ export const Canvas: React.FC<CanvasProps> = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              const newScale = Math.min(2.5, Number((selectedObj.scale + 0.1).toFixed(2)));
+              const newScale = Math.min(2.0, Number((selectedObj.scale + 0.05).toFixed(2)));
               onUpdateObject({ ...selectedObj, scale: newScale });
             }}
             className="p-1.5 hover:bg-slate-800 text-slate-300 rounded"
-            title="Увеличить (scale +10%)"
+            title="Увеличить (scale +5%)"
           >
             <ZoomIn className="w-4 h-4" />
           </button>
