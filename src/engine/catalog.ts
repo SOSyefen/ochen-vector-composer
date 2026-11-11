@@ -65,18 +65,18 @@ export const ILLUSTRATION_SIZES: Readonly<Record<IllustrationId, readonly [numbe
   coin: [335, 273],
 };
 
-// Calibrated scales on 380x380 grid (hero spans ~70-75% of grid width)
+// Calibrated scales on 380x380 grid (scenes fit with clean margins, see examples/01..03)
 export const CALIBRATED_SCALES: Readonly<Record<IllustrationId, number>> = {
-  headphones: 0.32, // ~282px on 380 grid
-  book: 0.27, // ~390px on 380 grid (bleeds past edge)
-  folder: 0.28, // ~348px on 380 grid
-  vase: 0.25,
-  lamp: 0.24,
-  phone: 0.28,
-  notebook: 0.34, // wallet / notebook
-  puzzle: 0.28,
-  pen: 0.30,
-  coin: 0.34,
+  headphones: 0.2, // ~177px on 380 grid
+  book: 0.17, // ~246px on 380 grid
+  folder: 0.19, // ~236px on 380 grid
+  vase: 0.16,
+  lamp: 0.16,
+  phone: 0.19,
+  notebook: 0.21, // wallet / notebook
+  puzzle: 0.19,
+  pen: 0.19,
+  coin: 0.21,
 };
 
 export const ALL_ILLUSTRATION_IDS: readonly IllustrationId[] = Object.keys(
@@ -193,7 +193,7 @@ export const COMPONENT_KEYWORDS: readonly ComponentKeywordMatcher[] = [
   },
   {
     id: 'book',
-    regex: /(?:^|[^а-яa-z0-9])(книг[а-я]*|книжк[а-я]*|учебник[а-я]*|том|литератур[а-я]*|book[s]?|textbook[s]?)(?=$|[^а-яa-z0-9])/i,
+    regex: /(?:^|[^а-яa-z0-9])(книг[а-я]*|книжк[а-я]*|учебник[а-я]*|том|литератур[а-я]*|библиотек[а-я]*|читальн[а-я]*|роман[а-я]*|пособи[а-я]*|book[s]?|textbook[s]?|library)(?=$|[^а-яa-z0-9])/i,
   },
   {
     id: 'phone',
@@ -299,6 +299,17 @@ export const PRESET_METAPHORS: PresetMetaphor[] = [
     components: ['headphones', 'folder', 'pen'],
     layoutStyle: 'headline',
   },
+  {
+    id: 'director-standard',
+    label: '⭐ Эталон арт-директора',
+    name: '⭐ Эталон арт-директора',
+    title: '⭐ Эталон арт-директора',
+    description: 'Референсная сцена: кошелёк, наушники, букет и ручка',
+    query: 'эталон арт-директора',
+    keywords: ['эталон', 'арт-директор', 'референс', 'director', 'reference'],
+    components: ['notebook', 'headphones', 'vase', 'pen'],
+    layoutStyle: 'centered',
+  },
 ];
 
 // ---- Semantic themes -------------------------------------------------------
@@ -319,7 +330,7 @@ export const SEMANTIC_METAPHOR_THEMES: readonly SemanticTheme[] = [
   },
   {
     id: 'work',
-    keywords: ['работа', 'дом', 'удаленк', 'remote', 'home office', 'созвон', 'фриланс', 'офис', 'задачи', 'work', 'ворк', 'zoom'],
+    keywords: ['работа', 'дом', 'удаленк', 'remote', 'home office', 'созвон', 'фриланс', 'офис', 'задачи', 'work', 'ворк', 'zoom', 'презентац', 'маркетинг', 'пиар', 'marketing'],
     components: ['folder', 'notebook', 'pen', 'lamp', 'coin'],
     style: 'centered',
   },
@@ -337,13 +348,13 @@ export const SEMANTIC_METAPHOR_THEMES: readonly SemanticTheme[] = [
   },
   {
     id: 'study',
-    keywords: ['учеба', 'книги', 'курсы', 'образование', 'студент', 'лекция', 'конспект', 'экзамен', 'наук', 'study', 'education', 'learn'],
+    keywords: ['учеба', 'книги', 'курсы', 'образование', 'студент', 'лекция', 'конспект', 'экзамен', 'наук', 'study', 'education', 'learn', 'библиот', 'читал', 'диплом', 'реферат', 'library'],
     components: ['book', 'phone', 'pen', 'lamp'],
     style: 'centered',
   },
   {
     id: 'finance',
-    keywords: ['финансы', 'бюджет', 'деньги', 'инвестиции', 'банк', 'крипта', 'доход', 'зарплат', 'актив', 'налог', 'finance', 'money', 'budget'],
+    keywords: ['финансы', 'бюджет', 'деньги', 'инвестиции', 'банк', 'крипта', 'доход', 'зарплат', 'актив', 'налог', 'finance', 'money', 'budget', 'аналитик', 'метрик', 'отчет', 'дашборд', 'analytics'],
     components: ['notebook', 'folder', 'pen', 'coin'],
     style: 'centered',
   },

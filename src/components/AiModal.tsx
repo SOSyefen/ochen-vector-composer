@@ -27,7 +27,7 @@ interface PresetLike {
   components?: string[];
 }
 
-const DIRECTOR_STANDARD_ITEMS: IllustrationId[] = ['notebook', 'headphones', 'vase', 'coin'];
+const DIRECTOR_STANDARD_ITEMS: IllustrationId[] = ['notebook', 'headphones', 'vase', 'pen'];
 
 export const AiModal: React.FC<AiModalProps> = ({
   isOpen,

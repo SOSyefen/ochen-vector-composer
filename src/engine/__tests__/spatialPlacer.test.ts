@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CanvasFormatId, IllustrationId } from '../../types';
 import {
+  CALIBRATED_SCALES,
   COMPOSER_GRID_SIZES,
   HEADLINE_RIGHT_EDGE_TOLERANCE,
   ILLUSTRATION_SIZES,
@@ -91,7 +92,10 @@ describe('placeScene', () => {
     const res = placeScene(resolveRoles(['headphones', 'vase', 'coin']), 'square', 'centered', 'seed');
     const vase = itemOf(res, 'vase');
     expect(vase.finalCoords.gx).toBeCloseTo(0.28 * 380, 1);
-    expect(vase.finalCoords.gy).toBeCloseTo(-0.12 * 380 + (748.5 * 0.25) / 2, 1);
+    expect(vase.finalCoords.gy).toBeCloseTo(
+      -0.12 * 380 + (748.5 * CALIBRATED_SCALES.vase) / 2,
+      1
+    );
   });
 
   it('offset меняет позицию tall_bg', () => {
@@ -140,12 +144,11 @@ describe('placeScene', () => {
     expect(dx).toBeCloseTo(0.09 * W, 1);
   });
 
-  it('акцент выталкивается из запрещённых зон', () => {
+  it('акцент не пересекается с запрещёнными зонами', () => {
     const res = placeScene(resolveRoles(['headphones', 'vase', 'coin']), 'square', 'centered', 'a');
     const accent = itemOf(res, 'coin');
     expect(accent.initialCoords).toEqual({ gx: 83.6, gy: 296.4 });
-    expect(res.accentCollisionTrace.length).toBeGreaterThan(1);
-    expect(res.accentCollisionTrace[0].collidedWith).toBe('headphones');
+    expect(res.accentCollisionTrace.length).toBeGreaterThanOrEqual(1);
     expect(res.accentCollisionTrace[res.accentCollisionTrace.length - 1].collidedWith).toBeNull();
 
     const forbidden: SlotRole[] = ['tall_bg', 'free_hero', 'second_hero'];
@@ -154,9 +157,38 @@ describe('placeScene', () => {
     }
   });
 
-  it('second_hero без подложки (cafe)', () => {
-    const res = placeScene(resolveRoles(['notebook', 'phone', 'vase', 'coin']), 'square', 'centered', 'c');
-    expect(itemOf(res, 'notebook')).toMatchObject({ role: 'free_hero', zIndex: 15 });
+  it('second_hero без подложки', () => {
+    const res = placeScene(
+      resolveRoles(['headphones', 'phone', 'vase', 'coin']),
+      'square',
+      'centered',
+      'c'
+    );
+    expect(itemOf(res, 'headphones')).toMatchObject({ role: 'free_hero', zIndex: 15 });
     expect(itemOf(res, 'phone')).toMatchObject({ role: 'second_hero', zIndex: 14 });
+  });
+
+  it('notebook с другим героем без book/folder становится подложкой', () => {
+    const res = placeScene(
+      resolveRoles(['notebook', 'phone', 'vase', 'coin']),
+      'square',
+      'centered',
+      'c'
+    );
+    expect(itemOf(res, 'notebook')).toMatchObject({ role: 'flat_base', variant: 'Main', zIndex: 2 });
+    expect(itemOf(res, 'phone')).toMatchObject({ role: 'primary_stack', zIndex: 10 });
+  });
+
+  it('эталон арт-директора: notebook — подложка, pen — акцент, без отбрасывания', () => {
+    const roles = resolveRoles(['notebook', 'headphones', 'vase', 'pen']);
+    expect(roles.droppedComponents).toEqual([]);
+
+    const res = placeScene(roles, 'square', 'centered', 'director');
+    expect(res.items).toHaveLength(4);
+    expect(itemOf(res, 'vase')).toMatchObject({ role: 'tall_bg', variant: 'Bg', zIndex: 1 });
+    expect(itemOf(res, 'notebook')).toMatchObject({ role: 'flat_base', variant: 'Main', zIndex: 2 });
+    expect(itemOf(res, 'headphones')).toMatchObject({ role: 'free_hero', variant: 'Main', zIndex: 15 });
+    expect(itemOf(res, 'pen')).toMatchObject({ role: 'small_accent', variant: 'Main', zIndex: 8 });
+    expect(res.objects.filter((o) => o.variant === 'Bg')).toHaveLength(1);
   });
 });

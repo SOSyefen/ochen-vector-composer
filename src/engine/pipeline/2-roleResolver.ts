@@ -55,7 +55,7 @@ export function normalizeSceneComponents(rawList: IllustrationId[]): Illustratio
 /**
  * Назначает слоты:
  *   tall_bg         — lamp / vase (монохромный Bg)
- *   flat_base       — book / folder
+ *   flat_base       — book / folder (или notebook, если подложки нет и есть другой герой)
  *   primary_stack   — notebook / phone / puzzle на подложке
  *   secondary_stack — pen на подложке
  *   free_hero       — свободный герой
@@ -93,18 +93,30 @@ export function resolveRoles(rawComponents: IllustrationId[]): RoleAssignment & 
   }
 
   // ---- Slot resolution ----------------------------------------------------
-  const baseId = normalized.find((id) => FLAT_BASES.has(id));
+  const naturalBaseId = normalized.find((id) => FLAT_BASES.has(id));
   const tallId = normalized.find((id) => TALL_BACKGROUNDS.has(id));
 
-  const heroCandidates = normalized.filter(
+  const nonBaseHeroes = normalized.filter(
     (id) => !FLAT_BASES.has(id) && !TALL_BACKGROUNDS.has(id) && !SMALL_ACCENTS.has(id)
   );
+
+  // Без book/folder кошелёк (notebook) становится подложкой, если рядом есть другой герой
+  const promoteNotebook =
+    naturalBaseId === undefined &&
+    normalized.includes('notebook') &&
+    nonBaseHeroes.some((id) => id !== 'notebook');
+
+  const baseId: IllustrationId | undefined =
+    naturalBaseId ?? (promoteNotebook ? 'notebook' : undefined);
+
+  const heroCandidates = nonBaseHeroes.filter((id) => id !== baseId);
 
   const primaryStackId: IllustrationId | undefined = baseId
     ? heroCandidates.find((id) => PRIMARY_STACKABLE_ON_BASE.has(id))
     : undefined;
 
-  const penOnBase = baseId !== undefined && normalized.includes('pen');
+  // Ручка лежит на подложке только для book/folder; на notebook она уходит в small_accent
+  const penOnBase = (baseId === 'book' || baseId === 'folder') && normalized.includes('pen');
 
   const freeHeroId: IllustrationId | undefined = baseId
     ? heroCandidates.find((id) => id !== primaryStackId)

@@ -110,6 +110,27 @@ describe('parseIntent', () => {
     expect(b).toEqual(a);
   });
 
+  it('одиночное «библиотека» даёт сцену с book, а не случайный fallback', () => {
+    const intent = parseIntent('библиотека');
+    expect(intent.strategy).not.toBe('deterministic_fallback');
+    expect(intent.rawComponents).toContain('book');
+  });
+
+  it('одиночный предмет («букет») -> explicit_components с этим предметом', () => {
+    const intent = parseIntent('букет');
+    expect(intent.strategy).toBe('explicit_components');
+    expect(intent.matchedRuleId).toBeNull();
+    expect(intent.rawComponents).toEqual(['vase']);
+  });
+
+  it('«Эталон арт-директора» -> director-standard', () => {
+    const intent = parseIntent('Эталон арт-директора');
+    expect(intent.strategy).toBe('exact_preset');
+    expect(intent.matchedRuleId).toBe('director-standard');
+    expect(intent.rawComponents).toEqual(['notebook', 'headphones', 'vase', 'pen']);
+    expect(intent.resolvedStyle).toBe('centered');
+  });
+
   it('пустой запрос -> fallback', () => {
     expect(parseIntent('').strategy).toBe('deterministic_fallback');
     expect(parseIntent().strategy).toBe('deterministic_fallback');

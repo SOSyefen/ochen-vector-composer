@@ -8,7 +8,8 @@
  *  2) 'explicit_components'   — >= 2 явных предметов в тексте (важнее нечётких ключей!)
  *  3) 'preset_keyword'        — нечёткое совпадение ключевых слов/лейбла пресета
  *  4) 'semantic_theme'        — тематический словарь
- *  5) 'deterministic_fallback'— хэш-детерминированный выбор пресета
+ *  5) 'explicit_components'   — единственный распознанный предмет («букет», «смартфон»)
+ *  6) 'deterministic_fallback'— хэш-детерминированный выбор пресета
  */
 import { IllustrationId } from '../../types';
 import {
@@ -226,6 +227,17 @@ export function parseIntent(
     };
   }
 
-  // 5. Детерминированный fallback
+  // 5. Один распознанный предмет: roleResolver достроит сцену детерминированными компаньонами
+  if (extracted.length >= 1) {
+    return {
+      strategy: 'explicit_components',
+      matchedRuleId: null,
+      extractedExplicit: extracted,
+      rawComponents: [extracted[0]],
+      resolvedStyle: styleOverride ?? DEFAULT_STYLE,
+    };
+  }
+
+  // 6. Детерминированный fallback
   return fallbackResolution(rawPrompt, extracted, styleOverride);
 }
