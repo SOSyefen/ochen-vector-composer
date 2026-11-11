@@ -9,6 +9,7 @@
  *  3) 'preset_keyword'        — нечёткое совпадение ключевых слов/лейбла пресета
  *  4) 'semantic_theme'        — тематический словарь
  *  5) 'explicit_components'   — единственный распознанный предмет («букет», «смартфон»)
+ *  5.5) fuzzy typo recovery   — префиксное расстояние Дамерау–Левенштейна по основам слов
  *  6) 'deterministic_fallback'— хэш-детерминированный выбор пресета
  */
 import { IllustrationId } from '../../types';
@@ -16,6 +17,7 @@ import {
   COMPONENT_KEYWORDS,
   FALLBACK_PRESETS,
   FallbackPreset,
+  FUZZY_COMPONENT_STEMS,
   isIllustrationId,
   LayoutStyle,
   PRESET_METAPHORS,
@@ -136,6 +138,184 @@ function findKeywordPreset(normalized: string): PresetMetaphor | undefined {
   });
 }
 
+// ---- Fuzzy typo recovery ---------------------------------------------------
+
+/** Минимальная длина пользовательского токена для нечёткого сравнения */
+const FUZZY_MIN_TOKEN_LENGTH = 4;
+
+/**
+ * Расстояние Дамерау–Левенштейна (optimal string alignment):
+ * вставки, удаления, замены и перестановки соседних символов.
+ */
+export function damerauLevenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  const n = a.length;
+  const m = b.length;
+  if (n === 0) return m;
+  if (m === 0) return n;
+
+  const d: number[][] = [];
+  for (let i = 0; i <= n; i++) {
+    d.push(new Array<number>(m + 1).fill(0));
+    d[i][0] = i;
+  }
+  for (let j = 0; j <= m; j++) d[0][j] = j;
+
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      let v = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        v = Math.min(v, d[i - 2][j - 2] + 1);
+      }
+      d[i][j] = v;
+    }
+  }
+  return d[n][m];
+}
+
+/** Допустимое расстояние в зависимости от длины основы (M) и токена (N) */
+function fuzzyMaxDistance(stemLen: number, tokenLen: number): number {
+  if (stemLen < 4) return 0;
+  if (stemLen === 4) return tokenLen <= 5 ? 1 : 0;
+  if (stemLen <= 6) return 1;
+  return 2;
+}
+
+/**
+ * Префиксное расстояние токена до основы.
+ * Если токен длиннее основы — основа сравнивается со всеми префиксами длиной M-1, M, M+1
+ * (учёт окончаний + опечаток одновременно). Возвращает Infinity, если выше порога.
+ */
+export function prefixFuzzyDistance(token: string, stem: string): number {
+  const n = token.length;
+  const m = stem.length;
+  if (m < 4) return token === stem ? 0 : Infinity;
+
+  const limit = fuzzyMaxDistance(m, n);
+  if (n < m && m - n > limit) return Infinity;
+
+  const candidates = n > m
+    ? dedupe([token.slice(0, m - 1), token.slice(0, m), token.slice(0, m + 1)].filter(Boolean))
+    : [token];
+
+  let best = Infinity;
+  for (const candidate of candidates) {
+    const dist = damerauLevenshtein(stem, candidate);
+    if (dist < best) best = dist;
+  }
+  return best <= limit ? best : Infinity;
+}
+
+interface FuzzyComponentStemEntry {
+  id: IllustrationId;
+  stem: string;
+}
+
+interface FuzzyRuleStemEntry {
+  kind: 'preset_keyword' | 'semantic_theme';
+  ruleId: string;
+  stem: string;
+  components: readonly IllustrationId[];
+  style: LayoutStyle;
+}
+
+function buildFuzzyComponentStems(): FuzzyComponentStemEntry[] {
+  const out: FuzzyComponentStemEntry[] = [];
+  for (const entry of FUZZY_COMPONENT_STEMS) {
+    for (const raw of entry.stems) {
+      const stem = normalizeText(raw).trim();
+      if (stem) out.push({ id: entry.id, stem });
+    }
+  }
+  return out;
+}
+
+function buildFuzzyRuleStems(): FuzzyRuleStemEntry[] {
+  const out: FuzzyRuleStemEntry[] = [];
+  const seen = new Set<string>();
+  const push = (
+    kind: FuzzyRuleStemEntry['kind'],
+    ruleId: string,
+    raw: string,
+    components: readonly IllustrationId[],
+    style: LayoutStyle
+  ): void => {
+    const stem = normalizeText(raw).trim();
+    // только однословные буквенные основы: «арт-директор», «home office» не участвуют
+    if (stem.length < FUZZY_MIN_TOKEN_LENGTH || !/^\p{L}+$/u.test(stem)) return;
+    const key = `${kind}|${ruleId}|${stem}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ kind, ruleId, stem, components, style });
+  };
+
+  for (const preset of PRESET_METAPHORS) {
+    for (const kw of preset.keywords) {
+      push('preset_keyword', preset.id, kw, preset.components, preset.layoutStyle);
+    }
+  }
+  for (const theme of SEMANTIC_METAPHOR_THEMES) {
+    for (const kw of theme.keywords) {
+      push('semantic_theme', theme.id, kw, theme.components, theme.style);
+    }
+  }
+  return out;
+}
+
+const FUZZY_COMPONENT_ENTRIES: readonly FuzzyComponentStemEntry[] = buildFuzzyComponentStems();
+const FUZZY_RULE_ENTRIES: readonly FuzzyRuleStemEntry[] = buildFuzzyRuleStems();
+
+function tokenizeForFuzzy(text: string): string[] {
+  const tokens = normalizeText(text)
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((t) => t.length >= FUZZY_MIN_TOKEN_LENGTH);
+  return dedupe(tokens);
+}
+
+interface FuzzyComponentMatch {
+  token: string;
+  id: IllustrationId;
+}
+
+/** Для каждого токена выбирает предмет с наименьшей нормированной дистанцией */
+function fuzzyRecoverComponents(tokens: readonly string[]): FuzzyComponentMatch[] {
+  const result: FuzzyComponentMatch[] = [];
+  const seen = new Set<IllustrationId>();
+  for (const token of tokens) {
+    let best: { id: IllustrationId; score: number } | null = null;
+    for (const entry of FUZZY_COMPONENT_ENTRIES) {
+      const dist = prefixFuzzyDistance(token, entry.stem);
+      if (!Number.isFinite(dist)) continue;
+      const score = dist / entry.stem.length;
+      if (!best || score < best.score) best = { id: entry.id, score };
+    }
+    if (best && !seen.has(best.id)) {
+      seen.add(best.id);
+      result.push({ token, id: best.id });
+    }
+  }
+  return result;
+}
+
+/** Лучшее нечёткое совпадение с ключевыми словами пресетов/тем */
+function fuzzyRecoverRule(tokens: readonly string[]): FuzzyRuleStemEntry | null {
+  let best: FuzzyRuleStemEntry | null = null;
+  let bestScore = Infinity;
+  for (const token of tokens) {
+    for (const entry of FUZZY_RULE_ENTRIES) {
+      const dist = prefixFuzzyDistance(token, entry.stem);
+      if (!Number.isFinite(dist)) continue;
+      const score = dist / entry.stem.length;
+      if (score < bestScore) {
+        best = entry;
+        bestScore = score;
+      }
+    }
+  }
+  return best;
+}
+
 function fallbackResolution(
   prompt: string,
   extracted: IllustrationId[],
@@ -236,6 +416,33 @@ export function parseIntent(
       rawComponents: [extracted[0]],
       resolvedStyle: styleOverride ?? DEFAULT_STYLE,
     };
+  }
+
+  // 5.5. Нечёткое восстановление опечаток (префиксный Дамерау–Левенштейн)
+  const fuzzyTokens = tokenizeForFuzzy(rawPrompt);
+  if (fuzzyTokens.length > 0) {
+    const recovered = fuzzyRecoverComponents(fuzzyTokens);
+    if (recovered.length > 0) {
+      const ids = recovered.map((m) => m.id);
+      return {
+        strategy: 'explicit_components',
+        matchedRuleId: `fuzzy:components:${recovered.map((m) => `${m.token}->${m.id}`).join(',')}`,
+        extractedExplicit: ids,
+        rawComponents: [...ids],
+        resolvedStyle: styleOverride ?? DEFAULT_STYLE,
+      };
+    }
+
+    const rule = fuzzyRecoverRule(fuzzyTokens);
+    if (rule) {
+      return {
+        strategy: rule.kind,
+        matchedRuleId: `fuzzy:${rule.ruleId}`,
+        extractedExplicit: extracted,
+        rawComponents: [...rule.components],
+        resolvedStyle: styleOverride ?? rule.style,
+      };
+    }
   }
 
   // 6. Детерминированный fallback

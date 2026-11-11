@@ -229,6 +229,67 @@ export const COMPONENT_KEYWORDS: readonly ComponentKeywordMatcher[] = [
   },
 ];
 
+// ---- Fuzzy (typo-tolerant) component stems ----------------------------------
+
+export interface FuzzyComponentStems {
+  readonly id: IllustrationId;
+  /** Основы слов (RU + EN), нижний регистр, «ё» -> «е». Используются только в fuzzy-режиме. */
+  readonly stems: readonly string[];
+}
+
+export const FUZZY_COMPONENT_STEMS: readonly FuzzyComponentStems[] = [
+  {
+    id: 'headphones',
+    stems: ['наушник', 'гарнитур', 'airpods', 'headphone', 'earphone'],
+  },
+  {
+    id: 'book',
+    stems: ['книг', 'книжк', 'библиотек', 'учебник', 'литератур', 'читальн', 'textbook', 'library'],
+  },
+  {
+    id: 'phone',
+    stems: ['смартфон', 'телефон', 'айфон', 'мобильн', 'smartphone', 'iphone'],
+  },
+  {
+    id: 'puzzle',
+    stems: ['пазл', 'мозаик', 'головоломк', 'jigsaw', 'puzzle'],
+  },
+  {
+    id: 'coin',
+    stems: ['монет', 'жетон', 'копейк', 'деньг', 'валют', 'рубл'],
+  },
+  {
+    id: 'lamp',
+    stems: ['ламп', 'светильник', 'торшер'],
+  },
+  {
+    id: 'vase',
+    stems: ['букет', 'цветок', 'цветочн', 'растени', 'флор', 'flower', 'bouquet'],
+  },
+  {
+    id: 'notebook',
+    stems: [
+      'кошелек',
+      'бумажник',
+      'портмоне',
+      'картхолдер',
+      'блокнот',
+      'ежедневник',
+      'записн',
+      'wallet',
+      'notebook',
+    ],
+  },
+  {
+    id: 'folder',
+    stems: ['папк', 'документ', 'файл', 'архив', 'портфел', 'folder', 'binder'],
+  },
+  {
+    id: 'pen',
+    stems: ['ручк', 'авторучк', 'карандаш', 'стилус', 'маркер', 'pencil', 'stylus'],
+  },
+];
+
 // ---- Presets ---------------------------------------------------------------
 
 export interface PresetMetaphor {

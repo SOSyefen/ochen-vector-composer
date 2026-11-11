@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { IllustrationId } from '../../types';
 import { PRESET_METAPHORS } from '../catalog';
 import {
+  damerauLevenshtein,
   extractComponentsFromText,
   hashString,
   normalizeText,
@@ -145,5 +146,72 @@ describe('parseIntent', () => {
     const intent = parseIntent('наушники и папка под заголовок');
     expect(intent.strategy).toBe('explicit_components');
     expect(intent.resolvedStyle).toBe('headline');
+  });
+});
+
+describe('damerauLevenshtein', () => {
+  it('считает подстановки, вставки, удаления и перестановки', () => {
+    expect(damerauLevenshtein('пазл', 'пазл')).toBe(0);
+    expect(damerauLevenshtein('пазл', 'палз')).toBe(1); // перестановка
+    expect(damerauLevenshtein('кошелек', 'кашелек')).toBe(1); // замена
+    expect(damerauLevenshtein('библиотек', 'библитек')).toBe(1); // удаление
+    expect(damerauLevenshtein('книг', 'книига')).toBe(2); // вставка + вставка
+    expect(damerauLevenshtein('', 'abc')).toBe(3);
+  });
+});
+
+describe('parseIntent: fuzzy typo recovery', () => {
+  it('«библиатека» -> book, не fallback', () => {
+    const intent = parseIntent('библиатека');
+    expect(intent.strategy).not.toBe('deterministic_fallback');
+    expect(intent.rawComponents).toContain('book');
+  });
+
+  it('«в библиатеками читаю» (склонение + опечатка) -> book, не fallback', () => {
+    const intent = parseIntent('в библиатеками читаю');
+    expect(intent.strategy).not.toBe('deterministic_fallback');
+    expect(intent.rawComponents).toContain('book');
+  });
+
+  it('лишняя и пропущенная буква в «библиотеке»', () => {
+    expect(parseIntent('бииблиатека').rawComponents).toContain('book');
+    expect(parseIntent('библатека').rawComponents).toContain('book');
+  });
+
+  it('«кашелек» -> notebook', () => {
+    const intent = parseIntent('кашелек');
+    expect(intent.strategy).toBe('explicit_components');
+    expect(intent.rawComponents).toEqual(['notebook']);
+  });
+
+  it('«наущники» -> headphones', () => {
+    const intent = parseIntent('наущники');
+    expect(intent.strategy).toBe('explicit_components');
+    expect(intent.rawComponents).toEqual(['headphones']);
+  });
+
+  it('«смарфон» -> phone', () => {
+    const intent = parseIntent('смарфон');
+    expect(intent.strategy).toBe('explicit_components');
+    expect(intent.rawComponents).toEqual(['phone']);
+  });
+
+  it('«осинь» -> semantic_theme cozy', () => {
+    const intent = parseIntent('осинь');
+    expect(intent.strategy).toBe('semantic_theme');
+    expect(intent.matchedRuleId).toBe('fuzzy:cozy');
+  });
+
+  it('короткие слова «для без при» не дают ложных срабатываний', () => {
+    const intent = parseIntent('для без при');
+    expect(intent.strategy).toBe('deterministic_fallback');
+  });
+
+  it('мусор «qwerty12345» -> deterministic_fallback', () => {
+    expect(parseIntent('qwerty12345').strategy).toBe('deterministic_fallback');
+  });
+
+  it('результат детерминирован', () => {
+    expect(parseIntent('библиатека')).toEqual(parseIntent('библиатека'));
   });
 });
