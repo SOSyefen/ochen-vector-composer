@@ -82,10 +82,19 @@ export const Canvas: React.FC<CanvasProps> = ({
     const pointerCanvasX = (e.clientX - rect.left - (rect.width - format.width * fitScale) / 2) / fitScale;
     const pointerCanvasY = (e.clientY - rect.top - (rect.height - format.height * fitScale) / 2) / fitScale;
 
+    const rawX = pointerCanvasX - dragOffset.x;
+    const rawY = pointerCanvasY - dragOffset.y;
+
+    if (isNaN(rawX) || isNaN(rawY)) return;
+
+    // Clamp within generous bounds of canvas
+    const clampedX = Math.max(-100, Math.min(format.width + 100, Math.round(rawX)));
+    const clampedY = Math.max(-100, Math.min(format.height + 100, Math.round(rawY)));
+
     onUpdateObject({
       ...targetObj,
-      x: Math.round(pointerCanvasX - dragOffset.x),
-      y: Math.round(pointerCanvasY - dragOffset.y),
+      x: clampedX,
+      y: clampedY,
     });
   };
 

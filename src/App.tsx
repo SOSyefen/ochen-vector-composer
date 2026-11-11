@@ -8,13 +8,20 @@ import { Sidebar } from './components/Sidebar';
 import { Canvas } from './components/Canvas';
 import { AiModal } from './components/AiModal';
 
+let globalInstanceCounter = 0;
+
 export const App: React.FC = () => {
   const [size, setSize] = useState<DetailSize>('L');
   const [format, setFormat] = useState<CanvasFormatId>('square');
   const [activePalette, setActivePalette] = useState<Palette>(BUILTIN_PALETTES[0]);
-  const [canvasBg, setCanvasBg] = useState<string>(BUILTIN_PALETTES[0].roles.bg);
+  const [canvasBg, setCanvasBgState] = useState<string>(BUILTIN_PALETTES[0].roles.bg);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+
+  // Safe canvas background setter respecting client rules
+  const setCanvasBg = (color: string) => {
+    setCanvasBgState(color);
+  };
 
   // Initialize with a beautiful initial scene
   const [objects, setObjects] = useState<CanvasObject[]>(() =>
@@ -25,7 +32,7 @@ export const App: React.FC = () => {
 
   // Object manipulation handlers
   const handleAddObject = (id: IllustrationId, variant: ObjectVariant) => {
-    const newInstanceId = `obj_${Date.now()}_${id}`;
+    const newInstanceId = `obj_${Date.now()}_${++globalInstanceCounter}_${id}`;
     const maxZ = Math.max(...objects.map((o) => o.zIndex), 0);
     const newObj: CanvasObject = {
       instanceId: newInstanceId,
@@ -56,10 +63,10 @@ export const App: React.FC = () => {
 
     const dup: CanvasObject = {
       ...src,
-      instanceId: `obj_${Date.now()}_${src.illustrationId}`,
+      instanceId: `obj_${Date.now()}_${++globalInstanceCounter}_${src.illustrationId}`,
       x: src.x + 30,
       y: src.y + 30,
-      zIndex: objects.length + 1,
+      zIndex: Math.max(...objects.map((o) => o.zIndex), 0) + 1,
     };
     setObjects((prev) => [...prev, dup]);
     setSelectedId(dup.instanceId);
