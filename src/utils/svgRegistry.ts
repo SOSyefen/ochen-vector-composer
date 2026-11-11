@@ -16,6 +16,8 @@ export const ILLUSTRATION_CATALOG: readonly IllustrationCatalogItem[] = [
 ];
 
 export interface SvgMetrics {
+  minX: number;
+  minY: number;
   vbWidth: number;
   vbHeight: number;
 }
@@ -51,9 +53,11 @@ export function parseSvgViewBox(svgContent: string): SvgMetrics {
   const match = svgContent.match(/viewBox=["']\s*([0-9.-]+)\s+([0-9.-]+)\s+([0-9.-]+)\s+([0-9.-]+)\s*["']/i);
   if (match) {
     return {
+      minX: parseFloat(match[1]) || 0,
+      minY: parseFloat(match[2]) || 0,
       vbWidth: parseFloat(match[3]) || BASE_OBJECT_SIZE,
       vbHeight: parseFloat(match[4]) || BASE_OBJECT_SIZE,
     };
   }
-  return { vbWidth: BASE_OBJECT_SIZE, vbHeight: BASE_OBJECT_SIZE };
+  return { minX: 0, minY: 0, vbWidth: BASE_OBJECT_SIZE, vbHeight: BASE_OBJECT_SIZE };
 }

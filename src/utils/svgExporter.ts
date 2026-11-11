@@ -23,11 +23,11 @@ export function assembleFullSvg(
     const match = recolored.match(/<svg[^>]*>([\s\S]*?)<\/svg>/i);
     const innerContent = match ? match[1] : '';
 
-    // Center of object transform
+    // Center of object transform respecting viewBox offsets
     const originX = metrics.vbWidth / 2;
     const originY = metrics.vbHeight / 2;
 
-    const transform = `translate(${obj.x - originX * obj.scale}, ${obj.y - originY * obj.scale}) scale(${obj.scale}) rotate(${obj.rotation} ${originX} ${originY})`;
+    const transform = `translate(${Math.round(obj.x - (originX + metrics.minX) * obj.scale)}, ${Math.round(obj.y - (originY + metrics.minY) * obj.scale)}) scale(${obj.scale}) rotate(${obj.rotation} ${Math.round(originX + metrics.minX)} ${Math.round(originY + metrics.minY)})`;
 
     innerSvgElements.push(`
     <!-- Object: ${obj.illustrationId} (${obj.variant}) [id: ${obj.instanceId}] -->
@@ -37,13 +37,7 @@ export function assembleFullSvg(
   }
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${format.width} ${format.height}" width="${format.width}" height="${format.height}">
-  <defs>
-    <style>
-      /* Clean Studio Ochen Vector Export */
-      * { box-sizing: border-box; }
-    </style>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${format.width} ${format.height}" width="${format.width}" height="${format.height}">
   <!-- Canvas Background: strict palette-compliant -->
   <rect width="${format.width}" height="${format.height}" fill="${canvasBg}" />
   

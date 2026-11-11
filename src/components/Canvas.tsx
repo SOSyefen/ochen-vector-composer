@@ -240,7 +240,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
               const originX = metrics.vbWidth / 2;
               const originY = metrics.vbHeight / 2;
-              const transform = `translate(${obj.x - originX * obj.scale}, ${obj.y - originY * obj.scale}) scale(${obj.scale}) rotate(${obj.rotation} ${originX} ${originY})`;
+              const transform = `translate(${obj.x - (originX + metrics.minX) * obj.scale}, ${obj.y - (originY + metrics.minY) * obj.scale}) scale(${obj.scale}) rotate(${obj.rotation} ${originX + metrics.minX} ${originY + metrics.minY})`;
 
               // Parse inner SVG markup
               const match = recolored.match(/<svg[^>]*>([\s\S]*?)<\/svg>/i);

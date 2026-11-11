@@ -1,4 +1,4 @@
-import { CanvasFormatId, CanvasObject, CANVAS_FORMATS, IllustrationId } from '../types';
+import { CanvasFormatId, CanvasObject, CANVAS_FORMATS, IllustrationId, ObjectVariant } from '../types';
 
 export interface SemanticRule {
   keywords: string[];
@@ -9,37 +9,37 @@ export interface SemanticRule {
 
 export const SEMANTIC_RULES: SemanticRule[] = [
   {
-    keywords: ['финтех', 'банк', 'деньги', 'крипт', 'инвест', 'доход', 'капитал', 'fintech', 'money', 'finance'],
+    keywords: ['финтех', 'банк', 'деньг', 'крипт', 'инвест', 'доход', 'капитал', 'fintech', 'money', 'finance', 'коин', 'валют'],
     primary: ['coin', 'phone'],
     supporting: ['folder', 'notebook', 'pen'],
     mood: 'balance',
   },
   {
-    keywords: ['обучен', 'знани', 'учеб', 'книг', 'курс', 'студент', 'лекци', 'образован', 'study', 'education', 'book'],
+    keywords: ['обучен', 'знани', 'учеб', 'книг', 'курс', 'студент', 'лекци', 'образован', 'study', 'education', 'book', 'школ', 'университет'],
     primary: ['book', 'lamp'],
     supporting: ['notebook', 'pen', 'headphones'],
     mood: 'focus',
   },
   {
-    keywords: ['команд', 'брейншторм', 'стартап', 'партнер', 'синерги', 'пазл', 'team', 'brainstorm', 'puzzle', 'collab'],
+    keywords: ['команд', 'брейншторм', 'стартап', 'партнер', 'синерги', 'пазл', 'team', 'brainstorm', 'puzzle', 'collab', 'хакатон'],
     primary: ['puzzle', 'phone'],
     supporting: ['lamp', 'notebook', 'coin', 'vase'],
     mood: 'dynamic',
   },
   {
-    keywords: ['фокус', 'разработк', 'код', 'программир', 'технолог', 'аудио', 'музык', 'tech', 'dev', 'focus'],
+    keywords: ['фокус', 'разработк', 'код', 'программир', 'технолог', 'аудио', 'музык', 'tech', 'dev', 'focus', 'it', 'айти'],
     primary: ['headphones', 'phone'],
     supporting: ['lamp', 'notebook', 'puzzle'],
     mood: 'focus',
   },
   {
-    keywords: ['офис', 'бизнес', 'документ', 'отчет', 'план', 'менеджмент', 'work', 'business', 'office'],
+    keywords: ['офис', 'бизнес', 'документ', 'отчет', 'план', 'менеджмент', 'work', 'business', 'office', 'дело'],
     primary: ['folder', 'notebook'],
     supporting: ['pen', 'lamp', 'phone', 'coin'],
     mood: 'balance',
   },
   {
-    keywords: ['творчеств', 'дизайн', 'вдохновен', 'иде', 'арт', 'creative', 'art', 'design', 'idea'],
+    keywords: ['творчеств', 'дизайн', 'вдохновен', 'иде', 'арт', 'creative', 'art', 'design', 'idea', 'концепт', 'иллюстрац'],
     primary: ['vase', 'lamp'],
     supporting: ['puzzle', 'book', 'pen', 'notebook'],
     mood: 'creative',
@@ -55,6 +55,8 @@ export const PRESET_METAPHORS = [
   { title: 'Деловые документы', query: 'Офисный порядок, согласование договоров и папки документов' },
 ];
 
+let globalInstanceCounter = 0;
+
 export function analyzeMetaphor(input: string): {
   primary: IllustrationId[];
   supporting: IllustrationId[];
@@ -67,12 +69,12 @@ export function analyzeMetaphor(input: string): {
       return {
         primary: rule.primary,
         supporting: rule.supporting,
-        description: `Подобран стиль "${rule.mood}" на основе ключевых понятий`,
+        description: `Подобран стиль "${rule.mood}" на основе онтологии предметной области`,
       };
     }
   }
 
-  // Fallback defaults: balanced variety
+  // Fallback defaults
   return {
     primary: ['phone', 'book'],
     supporting: ['puzzle', 'lamp', 'notebook', 'coin'],
@@ -80,6 +82,11 @@ export function analyzeMetaphor(input: string): {
   };
 }
 
+/**
+ * Studio Isometric Cluster Engine:
+ * Строит гармоничную композицию вокруг доминирующего Hero-предмета с лучевой
+ * привязкой под изометрическим углом 30° и естественным перекрытием 15–25%.
+ */
 export function generateCompositionByMetaphor(
   prompt: string,
   formatId: CanvasFormatId
@@ -91,75 +98,108 @@ export function generateCompositionByMetaphor(
   const cy = format.height / 2;
   const objects: CanvasObject[] = [];
 
-  let instanceCounter = 0;
+  // Случайный джиттер для вариативности при повторной генерации
+  const seed = Math.random();
+  const archetype = seed < 0.4 ? 'hero_cluster' : seed < 0.75 ? 'isometric_cascade' : 'triad_balance';
 
-  // 1. Primary Focal Object(s) - Main state
-  const focalId = primary[0] || 'phone';
+  // 1. Hero Object (крупный якорный объект в фокусе)
+  const heroId = primary[0] || 'book';
+  const heroX = cx + (Math.random() * 20 - 10);
+  const heroY = cy - 20 + (Math.random() * 20 - 10);
+  const heroScale = 1.25;
+
   objects.push({
-    instanceId: `inst_${++instanceCounter}_${focalId}`,
-    illustrationId: focalId,
+    instanceId: `inst_${Date.now()}_${++globalInstanceCounter}_${heroId}`,
+    illustrationId: heroId,
     variant: 'Main',
-    x: cx - 120,
-    y: cy - 80,
-    scale: 1.15,
+    x: Math.round(heroX),
+    y: Math.round(heroY),
+    scale: heroScale,
     rotation: 0,
     zIndex: 10,
   });
 
+  // 2. Вторичный фокусный объект (если есть)
   if (primary[1]) {
-    const secondFocal = primary[1];
+    const secondId = primary[1];
+    // Размещение по изометрической диагонали вперед-вправо
+    const secondX = heroX + 150 + (Math.random() * 20 - 10);
+    const secondY = heroY + 85 + (Math.random() * 15 - 7);
     objects.push({
-      instanceId: `inst_${++instanceCounter}_${secondFocal}`,
+      instanceId: `inst_${Date.now()}_${++globalInstanceCounter}_${secondId}`,
+      illustrationId: secondId,
       variant: 'Main',
-      illustrationId: secondFocal,
-      x: cx + 110,
-      y: cy + 40,
-      scale: 1.0,
+      x: Math.round(secondX),
+      y: Math.round(secondY),
+      scale: 1.05,
       rotation: 0,
-      zIndex: 12,
+      zIndex: 14, // перекрывает Hero спереди
     });
   }
 
-  // 2. Supporting background / accent objects
-  // Layout offsets based on canvas ratio
-  const layoutSlots =
-    formatId === 'horizontal'
-      ? [
-          { x: cx - 380, y: cy - 130, scale: 0.85, variant: 'Bg' as const },
-          { x: cx + 360, y: cy - 110, scale: 0.85, variant: 'Bg' as const },
-          { x: cx - 260, y: cy + 120, scale: 0.9, variant: 'Main' as const },
-          { x: cx + 280, y: cy + 130, scale: 0.8, variant: 'Bg' as const },
-        ]
-      : formatId === 'vertical'
-      ? [
-          { x: cx - 130, y: cy - 340, scale: 0.85, variant: 'Bg' as const },
-          { x: cx + 120, y: cy - 200, scale: 0.9, variant: 'Main' as const },
-          { x: cx - 140, y: cy + 260, scale: 0.85, variant: 'Bg' as const },
-          { x: cx + 130, y: cy + 380, scale: 0.8, variant: 'Bg' as const },
-        ]
-      : [
-          // Square 1:1
-          { x: cx - 240, y: cy - 230, scale: 0.85, variant: 'Bg' as const },
-          { x: cx + 220, y: cy - 220, scale: 0.85, variant: 'Bg' as const },
-          { x: cx - 240, y: cy + 200, scale: 0.9, variant: 'Main' as const },
-          { x: cx + 240, y: cy + 210, scale: 0.8, variant: 'Bg' as const },
-        ];
+  // 3. Спутники (аксессуары и фоновый контекст), привязанные к изометрическим лучам
+  // Угол изометрии: dy = dx * tan(30°) = dx * 0.577
+  type SlotDef = { dx: number; dy: number; scale: number; variant: ObjectVariant };
 
-  supporting.forEach((item, idx) => {
-    if (idx >= layoutSlots.length) return;
-    const slot = layoutSlots[idx];
+  let slotArchetype: SlotDef[];
+
+  if (archetype === 'hero_cluster') {
+    slotArchetype = [
+      // На заднем плане слева-вверху (за Hero)
+      { dx: -160, dy: -90, scale: 0.9, variant: 'Bg' },
+      // На заднем плане справа-вверху (за Hero)
+      { dx: 140, dy: -80, scale: 0.85, variant: 'Bg' },
+      // На переднем плане слева-внизу (ближе к зрителю)
+      { dx: -150, dy: 90, scale: 0.95, variant: 'Main' },
+      // Акцентный предмет на столе спереди
+      { dx: 40, dy: 140, scale: 0.75, variant: 'Bg' },
+    ];
+  } else if (archetype === 'isometric_cascade') {
+    slotArchetype = [
+      // Диагональный каскад по лучу 30°
+      { dx: -200, dy: -115, scale: 0.8, variant: 'Bg' },
+      { dx: -100, dy: -55, scale: 0.95, variant: 'Main' },
+      { dx: 100, dy: 60, scale: 0.9, variant: 'Bg' },
+      { dx: 190, dy: 110, scale: 0.75, variant: 'Main' },
+    ];
+  } else {
+    // Triad balance
+    slotArchetype = [
+      { dx: -180, dy: 30, scale: 0.9, variant: 'Main' },
+      { dx: 90, dy: -110, scale: 0.85, variant: 'Bg' },
+      { dx: -80, dy: 120, scale: 0.85, variant: 'Bg' },
+      { dx: 170, dy: 40, scale: 0.8, variant: 'Main' },
+    ];
+  }
+
+  // Для узкого вертикального формата сжимаем по X и растягиваем по Y
+  const aspectScaleX = formatId === 'vertical' ? 0.75 : formatId === 'horizontal' ? 1.25 : 1.0;
+  const aspectScaleY = formatId === 'vertical' ? 1.25 : formatId === 'horizontal' ? 0.85 : 1.0;
+
+  supporting.slice(0, 4).forEach((item, idx) => {
+    const slot = slotArchetype[idx] || slotArchetype[0];
+    const jitterX = (Math.random() * 24 - 12);
+    const jitterY = (Math.random() * 16 - 8);
+
+    const finalX = Math.round(heroX + slot.dx * aspectScaleX + jitterX);
+    const finalY = Math.round(heroY + slot.dy * aspectScaleY + jitterY);
+
+    // В изометрии zIndex строго зависит от координаты Y (нижние предметы ближе к зрителю)
+    const baseZ = finalY > heroY ? 12 + idx : 4 + idx;
+
     objects.push({
-      instanceId: `inst_${++instanceCounter}_${item}`,
+      instanceId: `inst_${Date.now()}_${++globalInstanceCounter}_${item}`,
       illustrationId: item,
       variant: slot.variant,
-      x: slot.x,
-      y: slot.y,
+      x: Math.max(80, Math.min(format.width - 80, finalX)),
+      y: Math.max(80, Math.min(format.height - 80, finalY)),
       scale: slot.scale,
       rotation: 0,
-      zIndex: slot.y > cy ? 15 + idx : 4 + idx,
+      zIndex: baseZ,
     });
   });
 
-  // Sort objects by zIndex for painters' algorithm
-  return objects.sort((a, b) => a.zIndex - b.zIndex);
+  // Нормализуем z-index по глубине Y (Painter's algorithm)
+  const sorted = objects.sort((a, b) => a.y - b.y);
+  return sorted.map((o, idx) => ({ ...o, zIndex: idx }));
 }
