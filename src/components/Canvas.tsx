@@ -5,7 +5,7 @@ import { recolorSvg } from '../utils/recolorEngine';
 import { extractSvgInner, readInheritedRootAttrs } from '../engine/pipeline/4-svgCompiler';
 import { traceStore } from '../engine/telemetry/traceStore';
 import type { PipelineTrace } from '../engine/contracts';
-import { RotateCw, Trash2, Copy, ArrowUp, ArrowDown, ZoomIn, ZoomOut } from 'lucide-react';
+import { RotateCw, Trash2, Copy, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface CanvasProps {
   objects: CanvasObject[];
@@ -277,31 +277,12 @@ export const Canvas: React.FC<CanvasProps> = ({
           >
             <RotateCw className="w-4 h-4" />
           </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              const newScale = Math.max(0.1, Number((selectedObj.scale - 0.05).toFixed(2)));
-              onUpdateObject({ ...selectedObj, scale: newScale });
-            }}
-            className="p-1.5 hover:bg-slate-800 text-slate-300 rounded"
-            title="Уменьшить (scale -5%)"
+          <span
+            className="text-[10px] font-mono text-slate-400 px-1.5 select-none"
+            title="Относительные пропорции зафиксированы по правилам дизайн-системы"
           >
-            <ZoomOut className="w-4 h-4" />
-          </button>
-          <span className="text-[10px] font-mono text-slate-400 px-0.5">
             {Math.round(selectedObj.scale * 100)}%
           </span>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              const newScale = Math.min(2.0, Number((selectedObj.scale + 0.05).toFixed(2)));
-              onUpdateObject({ ...selectedObj, scale: newScale });
-            }}
-            className="p-1.5 hover:bg-slate-800 text-slate-300 rounded"
-            title="Увеличить (scale +5%)"
-          >
-            <ZoomIn className="w-4 h-4" />
-          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
