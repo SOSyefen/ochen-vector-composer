@@ -15,6 +15,11 @@ raw_svgs
 !tsconfig.json
 !tsconfig.node.json
 .roo/
+stek/
+GEMINI.md
+HANDOFF.md
+*_audit*.md
+*_analysis.md
 *_prompt.md
 *_verdict.md
 task_*.md
