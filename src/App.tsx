@@ -16,6 +16,7 @@ import {
   LayoutStyle,
 } from './utils/aiComposer';
 import { assembleFullSvg, downloadSvgFile } from './utils/svgExporter';
+import { CALIBRATED_SCALES, getFormatScaleRatio } from './engine';
 import { Toolbar } from './components/Toolbar';
 import { Sidebar } from './components/Sidebar';
 import { Canvas } from './components/Canvas';
@@ -82,13 +83,10 @@ export const App: React.FC = () => {
   const handleAddObject = (id: IllustrationId, variant: ObjectVariant) => {
     const newInstanceId = `obj_${Date.now()}_${++globalInstanceCounter}_${id}`;
     const maxZ = Math.max(...objects.map((o) => o.zIndex), 0);
-    const formatScaleMap: Record<CanvasFormatId, number> = {
-      square: 0.38,
-      horizontal: 0.34,
-      vertical: 0.32,
-    };
     const defaultScale =
-      (formatScaleMap[format] || 0.38) * (size === 'S' ? S_SIZE_SCALE_RATIO : 1.0);
+      (CALIBRATED_SCALES[id] || 0.19) *
+      getFormatScaleRatio(format) *
+      (size === 'S' ? S_SIZE_SCALE_RATIO : 1.0);
     const newObj: CanvasObject = {
       instanceId: newInstanceId,
       illustrationId: id,

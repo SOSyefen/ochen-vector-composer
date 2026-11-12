@@ -307,9 +307,9 @@ export interface PresetMetaphor {
 export const PRESET_METAPHORS: PresetMetaphor[] = [
   {
     id: 'music-focus',
-    label: '⭐ Музыка и фокус в работе',
-    name: '⭐ Музыка и фокус в работе',
-    title: '⭐ Музыка и фокус в работе',
+    label: 'Музыка и фокус в работе',
+    name: 'Музыка и фокус в работе',
+    title: 'Музыка и фокус в работе',
     description: 'Фокусное состояние, гармония звука и эстетики',
     query: 'музыка фокус наушники букет монета',
     keywords: ['музык', 'фокус', 'подкаст', 'аудио', 'стрим', 'звук', 'медиа', 'music', 'podcast', 'audio', 'focus'],
@@ -362,9 +362,9 @@ export const PRESET_METAPHORS: PresetMetaphor[] = [
   },
   {
     id: 'director-standard',
-    label: '⭐ Эталон арт-директора',
-    name: '⭐ Эталон арт-директора',
-    title: '⭐ Эталон арт-директора',
+    label: 'Рабочий стол (базовый)',
+    name: 'Рабочий стол (базовый)',
+    title: 'Рабочий стол (базовый)',
     description: 'Референсная сцена: кошелёк, наушники, букет и ручка',
     query: 'эталон арт-директора',
     keywords: ['эталон', 'арт-директор', 'референс', 'director', 'reference'],

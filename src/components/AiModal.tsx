@@ -169,11 +169,6 @@ export const AiModal: React.FC<AiModalProps> = ({
                     >
                       <div className="font-semibold text-sm text-[#F3F4F6] group-hover:text-indigo-300 transition flex items-center justify-between">
                         <span>{preset.name || preset.title || preset.label}</span>
-                        {(preset.id === 'music-focus' || preset.id.includes('director')) && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">
-                            эталон
-                          </span>
-                        )}
                       </div>
                       <div className="text-xs text-[#9CA3AF] mt-1 leading-snug">
                         {preset.description || preset.query}
@@ -206,7 +201,7 @@ export const AiModal: React.FC<AiModalProps> = ({
                   className="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 text-xs font-medium transition"
                 >
                   <Star size={14} className="text-amber-400" />
-                  Эталон арт-директора
+                  Базовый пресет
                 </button>
               </div>
 
